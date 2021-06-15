@@ -88,33 +88,37 @@ describe('Comptroller', () => {
     });
 
     it("has account liquidity with credit limit", async () => {
-      const collateralFactor = 0.5, underlyingPrice = 1, user = accounts[1], amount = 1e6, creditLimit = 500;
+      const collateralFactor = 0.5, underlyingPrice = 1, user = accounts[1], amount = 1e6, creditLimit = 500, collateral = amount * collateralFactor * underlyingPrice;
       const cToken = await makeCToken({supportMarket: true, collateralFactor, underlyingPrice});
       let error, liquidity, shortfall;
-
-      ({0: error, 1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getAccountLiquidity', [user]));
-      expect(error).toEqualNumber(0);
-      expect(liquidity).toEqualNumber(0);
-      expect(shortfall).toEqualNumber(0);
-
-      await send(cToken.comptroller, '_setCreditLimit', [user, creditLimit]);
-
-      ({0: error, 1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getAccountLiquidity', [user]));
-      expect(error).toEqualNumber(0);
-      expect(liquidity).toEqualNumber(creditLimit);
-      expect(shortfall).toEqualNumber(0);
-
-      await enterMarkets([cToken], user);
-      await expect(quickMint(cToken, user, amount)).rejects.toRevert('revert credit account cannot mint');
-
-      await send(cToken.comptroller, '_setCreditLimit', [user, 0]);
 
       await enterMarkets([cToken], user);
       await quickMint(cToken, user, amount);
 
       ({0: error, 1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getAccountLiquidity', [user]));
       expect(error).toEqualNumber(0);
-      expect(liquidity).toEqualNumber(amount * collateralFactor);
+      expect(liquidity).toEqualNumber(collateral);
+      expect(shortfall).toEqualNumber(0);
+
+      // When credit limit is set, the collateral of this market is not counted.
+      await send(cToken.comptroller, '_setCreditLimit', [user, cToken._address, creditLimit]);
+
+      ({1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getHypotheticalAccountLiquidity', [user, cToken._address, 0, 200]));
+      expect(liquidity).toEqualNumber(0);
+      expect(shortfall).toEqualNumber(0);
+
+      ({1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getHypotheticalAccountLiquidity', [user, cToken._address, 0, 500]));
+      expect(liquidity).toEqualNumber(0);
+      expect(shortfall).toEqualNumber(0);
+
+      await expect(call(cToken.comptroller, 'getHypotheticalAccountLiquidity', [user, cToken._address, 0, 501])).rejects.toRevert('revert insufficient credit limit');
+
+      // Reset the credit limit.
+      await send(cToken.comptroller, '_setCreditLimit', [user, cToken._address, 0]);
+
+      ({0: error, 1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getAccountLiquidity', [user]));
+      expect(error).toEqualNumber(0);
+      expect(liquidity).toEqualNumber(collateral);
       expect(shortfall).toEqualNumber(0);
     })
   });
@@ -152,24 +156,4 @@ describe('Comptroller', () => {
       expect(shortfall).toEqualNumber(0);
     });
   });
-
-  it.skip("max credit limit saves gas", async () => {
-    const collateralFactor = 0.5, exchangeRate = 1, underlyingPrice = 1;
-    const cToken = await makeCToken({supportMarket: true, collateralFactor, exchangeRate, underlyingPrice});
-    const from = accounts[0], balance = 1e7, amount = 1e6, borrowAmount = 1e4;
-    await enterMarkets([cToken], from);
-    await send(cToken.underlying, 'harnessSetBalance', [from, balance], {from});
-    await send(cToken.underlying, 'approve', [cToken._address, balance], {from});
-    await send(cToken, 'mint', [amount], {from});
-
-    const result1 = await send(cToken, 'borrow', [borrowAmount], {from});
-    expect(result1).toSucceed();
-    console.log('result1', result1.gasUsed); // 180466
-
-    await send(cToken.comptroller, '_setCreditLimit', [from, UInt256Max()]);
-
-    const result2 = await send(cToken, 'borrow', [borrowAmount], {from});
-    expect(result2).toSucceed();
-    console.log('result2', result2.gasUsed); // 95882
-  })
 });
