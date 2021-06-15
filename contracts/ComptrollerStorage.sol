@@ -88,35 +88,10 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     bool public seizeGuardianPaused;
     mapping(address => bool) public mintGuardianPaused;
     mapping(address => bool) public borrowGuardianPaused;
-
-    struct CompMarketState {
-        /// @notice The market's last updated compBorrowIndex or compSupplyIndex
-        uint224 index;
-
-        /// @notice The block number the index was last updated at
-        uint32 block;
-    }
+    mapping(address => bool) public flashloanGuardianPaused;
 
     /// @notice A list of all markets
     CToken[] public allMarkets;
-
-    /// @notice The portion of compRate that each market currently receives
-    mapping(address => uint) public compSpeeds;
-
-    /// @notice The COMP market supply state for each market
-    mapping(address => CompMarketState) public compSupplyState;
-
-    /// @notice The COMP market borrow state for each market
-    mapping(address => CompMarketState) public compBorrowState;
-
-    /// @notice The COMP borrow index for each market for each supplier as of the last time they accrued COMP
-    mapping(address => mapping(address => uint)) public compSupplierIndex;
-
-    /// @notice The COMP borrow index for each market for each borrower as of the last time they accrued COMP
-    mapping(address => mapping(address => uint)) public compBorrowerIndex;
-
-    /// @notice The COMP accrued but not yet transferred to each user
-    mapping(address => uint) public compAccrued;
 
     // @notice The borrowCapGuardian can set borrowCaps to any number for any market. Lowering the borrow cap could disable borrowing on the given market.
     address public borrowCapGuardian;
@@ -130,9 +105,6 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     // @notice Supply caps enforced by mintAllowed for each cToken address. Defaults to zero which corresponds to unlimited supplying.
     mapping(address => uint) public supplyCaps;
 
-    // @notice creditLimits allowed specific protocols to borrow and repay without collateral.
-    mapping(address => uint) public creditLimits;
-
-    // @notice flashloanGuardianPaused can pause flash loan as a safety mechanism.
-    mapping(address => bool) public flashloanGuardianPaused;
+    // @notice creditLimits allowed specific protocols to borrow and repay specific markets without collateral.
+    mapping(address => mapping(address => uint)) public creditLimits;
 }
