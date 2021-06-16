@@ -1,7 +1,6 @@
 pragma solidity ^0.5.16;
 
 import "../../contracts/Comptroller.sol";
-import "../../contracts/ComptrollerG1.sol";
 import "../../contracts/CToken.sol";
 import "../../contracts/PriceOracle.sol";
 
@@ -43,6 +42,7 @@ contract ComptrollerHarness is Comptroller {
 // CompoundComptrollerHarness is only used for CCTokenHarness
 contract CompoundComptrollerHarness is ComptrollerHarness {
     address compAddress;
+    mapping(address => uint) public compAccrued;
 
     constructor() ComptrollerHarness() public {}
 

@@ -188,26 +188,22 @@ describe('Comptroller', () => {
     const creditLimit = etherMantissa(500);
 
     it("fails if not called by admin", async () => {
-      const cToken = await makeCToken(root);
-      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], creditLimit], {from: accounts[0]})).rejects.toRevert("revert only admin can set protocol credit limit");
+      const cToken = await makeCToken({supportMarket: true});
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert only admin can set protocol credit limit");
+    });
+
+    it("fails for invalid market", async () => {
+      const cToken = await makeCToken();
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit])).rejects.toRevert("revert invalid market");
     });
 
     it("succeeds and sets credit limit", async () => {
-      const cToken = await makeCToken();
-      const result = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], creditLimit]);
-      expect(result).toHaveLog('CreditLimitChanged', {protocol: accounts[0], creditLimit: creditLimit.toString()});
-    });
+      const cToken = await makeCToken({supportMarket: true});
+      const result = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit]);
+      expect(result).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: creditLimit.toString()});
 
-    it("succeeds and sets to max credit limit", async () => {
-      const cToken = await makeCToken();
-      const result = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], UInt256Max()]);
-      expect(result).toHaveLog('CreditLimitChanged', {protocol: accounts[0], creditLimit: UInt256Max().toString()});
-    });
-
-    it("succeeds and sets to 0 credit limit", async () => {
-      const cToken = await makeCToken();
-      const result = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], 0]);
-      expect(result).toHaveLog('CreditLimitChanged', {protocol: accounts[0], creditLimit: '0'});
+      const assetsIn = await call(cToken.comptroller, 'getAssetsIn', [accounts[0]]);
+      expect(assetsIn).toEqual([cToken._address]);
     });
   });
 
