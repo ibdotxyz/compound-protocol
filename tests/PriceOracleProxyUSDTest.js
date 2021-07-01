@@ -10,19 +10,20 @@ const {
   makeMockAggregator,
 } = require('./Utils/Compound');
 
-describe('PriceOracleProxyIB', () => {
+describe('PriceOracleProxyUSD', () => {
   let root, accounts;
   let oracle, backingOracle, cUsdc, cDai, cOthers;
 
   beforeEach(async () => {
     [root, ...accounts] = saddle.accounts;
     const comptroller = await makeComptroller();
+    const mockEthUsdAggregator = await makeMockAggregator({answer: 1});
     cUsdc = await makeCToken({comptroller: comptroller, supportMarket: true, underlyingOpts: {decimals: 6}});
     cDai = await makeCToken({comptroller: comptroller, supportMarket: true});
     cOthers = await makeCToken({comptroller: comptroller, supportMarket: true});
 
     backingOracle = await makePriceOracle();
-    oracle = await deploy('PriceOracleProxyIB', [root, backingOracle._address]);
+    oracle = await deploy('PriceOracleProxyUSD', [root, backingOracle._address, mockEthUsdAggregator._address]);
   });
 
   describe("constructor", () => {
