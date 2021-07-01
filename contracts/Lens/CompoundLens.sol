@@ -53,7 +53,7 @@ contract CompoundLens {
         uint collateralCap;
         uint totalCollateralTokens;
 
-        if (compareStrings(cToken.symbol(), "crETH")) {
+        if (compareStrings(cToken.symbol(), "crMATIC")) {
             underlyingAssetAddress = address(0);
             underlyingDecimals = 18;
         } else {
@@ -129,7 +129,7 @@ contract CompoundLens {
         uint collateralBalance;
         uint nativeTokenBalance = account.balance;
 
-        if (compareStrings(cToken.symbol(), "crETH")) {
+        if (compareStrings(cToken.symbol(), "crMATIC")) {
             tokenBalance = nativeTokenBalance;
             tokenAllowance = nativeTokenBalance;
         } else {
