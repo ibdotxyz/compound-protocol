@@ -10,14 +10,6 @@ interface V1PriceOracleInterface {
     function assetPrices(address asset) external view returns (uint);
 }
 
-interface CurveSwapInterface {
-    function get_virtual_price() external view returns (uint256);
-}
-
-interface YVaultInterface {
-    function getPricePerFullShare() external view returns (uint256);
-}
-
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
     function description() external view returns (string memory);
@@ -43,7 +35,7 @@ interface AggregatorV3Interface {
     );
 }
 
-contract PriceOracleProxyIB is PriceOracle, Exponential {
+contract PriceOracleProxyUSD is PriceOracle, Exponential {
     /// @notice ChainLink aggregator base, currently support USD and ETH
     enum AggregatorBase {
         USD,
@@ -76,20 +68,17 @@ contract PriceOracleProxyIB is PriceOracle, Exponential {
     /// @notice The v1 price oracle, maintain by CREAM
     V1PriceOracleInterface public v1PriceOracle;
 
-    address public constant cyY3CRVAddress = 0x7589C9E17BCFcE1Ccaa1f921196FDa177F0207Fc;
-
-    AggregatorV3Interface public constant ethUsdAggregator = AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+    /// @notice The ETH-USD aggregator address
+    AggregatorV3Interface public ethUsdAggregator;
 
     /**
      * @param admin_ The address of admin to set aggregators
      * @param v1PriceOracle_ The v1 price oracle
      */
-    constructor(address admin_, address v1PriceOracle_) public {
+    constructor(address admin_, address v1PriceOracle_, address ethUsdAggregator_) public {
         admin = admin_;
         v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
-
-        yVaults[cyY3CRVAddress] = 0x9cA85572E6A3EbF24dEDd195623F188735A5179f; // y-vault 3Crv
-        curveSwap[cyY3CRVAddress] = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7; // curve 3 pool
+        ethUsdAggregator = AggregatorV3Interface(ethUsdAggregator_);
     }
 
     /**
@@ -99,12 +88,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential {
      */
     function getUnderlyingPrice(CToken cToken) public view returns (uint) {
         address cTokenAddress = address(cToken);
-
-        if (cTokenAddress == cyY3CRVAddress) {
-            uint yVaultPrice = YVaultInterface(yVaults[cyY3CRVAddress]).getPricePerFullShare();
-            uint virtualPrice = CurveSwapInterface(curveSwap[cyY3CRVAddress]).get_virtual_price();
-            return mul_(yVaultPrice, Exp({mantissa: virtualPrice}));
-        }
 
         AggregatorInfo memory aggregatorInfo = aggregators[cTokenAddress];
         if (address(aggregatorInfo.source) != address(0)) {
