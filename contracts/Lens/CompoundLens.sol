@@ -45,19 +45,9 @@ contract CompoundLens is Exponential {
     function cTokenMetadataInternal(CToken cToken, Comptroller comptroller, PriceOracle priceOracle) internal returns (CTokenMetadata memory) {
         uint exchangeRateCurrent = cToken.exchangeRateCurrent();
         (bool isListed, uint collateralFactorMantissa, ComptrollerV1Storage.Version version) = comptroller.markets(address(cToken));
-        address underlyingAssetAddress;
-        uint underlyingDecimals;
+        CErc20 cErc20 = CErc20(address(cToken));
         uint collateralCap;
         uint totalCollateralTokens;
-
-        if (compareStrings(cToken.symbol(), "crMATIC")) {
-            underlyingAssetAddress = address(0);
-            underlyingDecimals = 18;
-        } else {
-            CErc20 cErc20 = CErc20(address(cToken));
-            underlyingAssetAddress = cErc20.underlying();
-            underlyingDecimals = EIP20Interface(cErc20.underlying()).decimals();
-        }
 
         if (version == ComptrollerV1Storage.Version.COLLATERALCAP) {
             collateralCap = CCollateralCapErc20Interface(address(cToken)).collateralCap();
@@ -77,9 +67,9 @@ contract CompoundLens is Exponential {
             totalCollateralTokens: totalCollateralTokens,
             isListed: isListed,
             collateralFactorMantissa: collateralFactorMantissa,
-            underlyingAssetAddress: underlyingAssetAddress,
+            underlyingAssetAddress: cErc20.underlying(),
             cTokenDecimals: cToken.decimals(),
-            underlyingDecimals: underlyingDecimals,
+            underlyingDecimals: EIP20Interface(cErc20.underlying()).decimals(),
             version: version,
             collateralCap: collateralCap,
             underlyingPrice: priceOracle.getUnderlyingPrice(cToken),
@@ -124,19 +114,12 @@ contract CompoundLens is Exponential {
     function cTokenBalances(CToken cToken, address payable account) public returns (CTokenBalances memory) {
         address comptroller = address(cToken.comptroller());
         bool collateralEnabled = Comptroller(comptroller).checkMembership(account, cToken);
-        uint tokenBalance;
-        uint tokenAllowance;
         uint collateralBalance;
 
-        if (compareStrings(cToken.symbol(), "crMATIC")) {
-            tokenBalance = account.balance;
-            tokenAllowance = account.balance;
-        } else {
-            CErc20 cErc20 = CErc20(address(cToken));
-            EIP20Interface underlying = EIP20Interface(cErc20.underlying());
-            tokenBalance = underlying.balanceOf(account);
-            tokenAllowance = underlying.allowance(account, address(cToken));
-        }
+        CErc20 cErc20 = CErc20(address(cToken));
+        EIP20Interface underlying = EIP20Interface(cErc20.underlying());
+        uint tokenBalance = underlying.balanceOf(account);
+        uint tokenAllowance = underlying.allowance(account, address(cToken));
 
         if (collateralEnabled) {
             (, collateralBalance, , ) = cToken.getAccountSnapshot(account);
@@ -203,9 +186,5 @@ contract CompoundLens is Exponential {
             rewards[i] = sub_(balanceAfter, balanceBefore);
         }
         return rewards;
-    }
-
-    function compareStrings(string memory a, string memory b) internal pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 }
