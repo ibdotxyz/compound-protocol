@@ -40,12 +40,7 @@ describe('PriceOracleProxyUSD', () => {
 
   describe("getUnderlyingPrice", () => {
     let setPrice = async (cToken, price, base) => {
-      const answerDecimals = 8;
-      const mockAggregator = await makeMockAggregator({answer: price * 1e8});
-      await send(
-        mockAggregator,
-        "setDecimals",
-        [answerDecimals]);
+      const mockAggregator = await makeMockAggregator({answer: etherMantissa(price)});
       await send(
         oracle,
         "_setAggregators",
