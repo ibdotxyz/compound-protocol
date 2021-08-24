@@ -1,47 +1,12 @@
 pragma solidity ^0.5.16;
 
-import "./CErc20.sol";
-import "./CToken.sol";
-import "./PriceOracle/PriceOracle.sol";
-import "./Exponential.sol";
-import "./EIP20Interface.sol";
-
-interface V1PriceOracleInterface {
-    function assetPrices(address asset) external view returns (uint256);
-}
-
-interface AggregatorV3Interface {
-    function decimals() external view returns (uint8);
-
-    function description() external view returns (string memory);
-
-    function version() external view returns (uint256);
-
-    // getRoundData and latestRoundData should both raise "No data present"
-    // if they do not have data to report, instead of returning unset values
-    // which could be misinterpreted as actual reported values.
-    function getRoundData(uint80 _roundId)
-        external
-        view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
-
-    function latestRoundData()
-        external
-        view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
-}
+import "./PriceOracle.sol";
+import "./interfaces/AggregatorV3Interface.sol";
+import "./interfaces/V1PriceOracleInterface.sol";
+import "../CErc20.sol";
+import "../CToken.sol";
+import "../Exponential.sol";
+import "../EIP20Interface.sol";
 
 contract PriceOracleProxyUSD is PriceOracle, Exponential {
     /// @notice ChainLink aggregator base, currently support USD and ETH
