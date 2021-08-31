@@ -488,6 +488,8 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         /* We emit a Transfer event */
         emit Transfer(src, dst, tokens);
 
+        comptroller.transferVerify(address(this), src, dst, tokens);
+
         return uint256(Error.NO_ERROR);
     }
 
@@ -572,6 +574,9 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         /* We emit a Mint event, and a Transfer event */
         emit Mint(minter, vars.actualMintAmount, vars.mintTokens);
         emit Transfer(address(this), minter, vars.mintTokens);
+
+        /* We call the defense hook */
+        comptroller.mintVerify(address(this), minter, vars.actualMintAmount, vars.mintTokens);
 
         return (uint256(Error.NO_ERROR), vars.actualMintAmount);
     }
@@ -728,6 +733,9 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
         /* Emit a Transfer event */
         emit Transfer(borrower, liquidator, seizeTokens);
+
+        /* We call the defense hook */
+        comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);
 
         return uint256(Error.NO_ERROR);
     }
