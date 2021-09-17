@@ -230,6 +230,26 @@ async function makeCToken(opts = {}) {
       version = 2; // cwrappednative's version is 2
       break;
 
+    case 'cevil':
+      underlying = await makeToken({kind: "evil"});
+      cDelegatee = await deploy('CErc20DelegateHarness');
+      cDelegator = await deploy('CErc20Delegator',
+        [
+          underlying._address,
+          comptroller._address,
+          interestRateModel._address,
+          exchangeRate,
+          name,
+          symbol,
+          decimals,
+          admin,
+          cDelegatee._address,
+          "0x0"
+        ]
+      );
+      cToken = await saddle.getContractAt('CErc20DelegateHarness', cDelegator._address); // XXXS at
+      break;
+
     case 'cerc20':
     default:
       underlying = opts.underlying || await makeToken(opts.underlyingOpts);
@@ -385,6 +405,12 @@ async function makeToken(opts = {}) {
     const symbol = opts.symbol || 'UNI-V2-LP';
     const name = opts.name || `Uniswap v2 LP`;
     return await deploy('LPTokenHarness', [quantity, name, decimals, symbol]);
+  } else if (kind == 'evil') {
+    const quantity = etherUnsigned(dfn(opts.quantity, 1e25));
+    const decimals = etherUnsigned(dfn(opts.decimals, 18));
+    const symbol = opts.symbol || 'Evil';
+    const name = opts.name || `Evil Token`;
+    return await deploy('EvilTransferToken', [quantity, name, decimals, symbol]);
   }
 }
 
@@ -406,6 +432,13 @@ async function makeMockRegistry(opts = {}) {
 async function makeLiquidityMining(opts = {}) {
   const comptroller = opts.comptroller || await makeComptroller(opts.comptrollerOpts);
   return await deploy('MockLiquidityMining', [comptroller._address]);
+}
+
+async function makeEvilAccount(opts = {}) {
+  const crEth = opts.crEth || await makeCToken({kind: 'cether'});
+  const crEvil = opts.crEvil || await makeCToken({kind: 'cevil'});
+  const borrowAmount = opts.borrowAmount || etherMantissa(1);
+  return await deploy('EvilAccount', [crEth._address, crEvil._address, borrowAmount]);
 }
 
 async function preCSLP(underlying) {
@@ -624,6 +657,7 @@ module.exports = {
   makeToken,
   makeCurveSwap,
   makeLiquidityMining,
+  makeEvilAccount,
   makeCTokenAdmin,
 
   balanceOf,
