@@ -253,6 +253,10 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         initializeAccountCollateralTokens(account);
 
         require(msg.sender == address(comptroller), "only comptroller may unregister collateral for user");
+        require(
+            comptroller.redeemAllowed(address(this), account, accountCollateralTokens[account]) == 0,
+            "comptroller rejection"
+        );
 
         decreaseUserCollateralInternal(account, accountCollateralTokens[account]);
     }
@@ -461,8 +465,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         /* We emit a Transfer event */
         emit Transfer(src, dst, tokens);
 
-        // unused function
-        // comptroller.transferVerify(address(this), src, dst, tokens);
+        comptroller.transferVerify(address(this), src, dst, tokens);
 
         return uint256(Error.NO_ERROR);
     }
@@ -518,8 +521,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
      * @param amount The amount of collateral user wants to decrease
      */
     function decreaseUserCollateralInternal(address account, uint256 amount) internal {
-        require(comptroller.redeemAllowed(address(this), account, amount) == 0, "comptroller rejection");
-
         /*
          * Return if amount is zero.
          * Put behind `redeemAllowed` for accuring potential COMP rewards.
@@ -619,8 +620,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         emit Transfer(address(this), minter, vars.mintTokens);
 
         /* We call the defense hook */
-        // unused function
-        // comptroller.mintVerify(address(this), minter, vars.actualMintAmount, vars.mintTokens);
+        comptroller.mintVerify(address(this), minter, vars.actualMintAmount, vars.mintTokens);
 
         return (uint256(Error.NO_ERROR), vars.actualMintAmount);
     }
@@ -687,6 +687,10 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
             collateralTokens = vars.redeemTokens - bufferTokens;
         }
 
+        if (collateralTokens > 0) {
+            require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "comptroller rejection");
+        }
+
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
             return fail(Error.MARKET_NOT_FRESH, FailureInfo.REDEEM_FRESHNESS_CHECK);
@@ -702,14 +706,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         // (No safe failures beyond this point)
 
         /*
-         * We invoke doTransferOut for the redeemer and the redeemAmount.
-         *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-         *  On success, the cToken has redeemAmount less of cash.
-         *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-         */
-        doTransferOut(redeemer, vars.redeemAmount, isNative);
-
-        /*
          * We calculate the new total supply and redeemer balance, checking for underflow:
          *  totalSupplyNew = totalSupply - redeemTokens
          *  accountTokensNew = accountTokens[redeemer] - redeemTokens
@@ -720,9 +716,15 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         /*
          * We only deallocate collateral tokens if the redeemer needs to redeem them.
          */
-        if (collateralTokens > 0) {
-            decreaseUserCollateralInternal(redeemer, collateralTokens);
-        }
+        decreaseUserCollateralInternal(redeemer, collateralTokens);
+
+        /*
+         * We invoke doTransferOut for the redeemer and the redeemAmount.
+         *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
+         *  On success, the cToken has redeemAmount less of cash.
+         *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+         */
+        doTransferOut(redeemer, vars.redeemAmount, isNative);
 
         /* We emit a Transfer event, and a Redeem event */
         emit Transfer(redeemer, address(this), vars.redeemTokens);
@@ -791,8 +793,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
 
         /* We call the defense hook */
-        // unused function
-        // comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);
+        comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);
 
         return uint256(Error.NO_ERROR);
     }
