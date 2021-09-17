@@ -71,6 +71,24 @@ describe('CToken', function () {
       const perBlock = await call(cToken, 'borrowRatePerBlock');
       expect(Math.abs(perBlock * 2102400 - 5e16)).toBeLessThanOrEqual(1e8);
     });
+
+    it("has a borrow rate but excludes evil spell", async () => {
+      const evilSpell = '0x560A8E3B79d23b0A525E15C6F3486c6A293DDAd2';
+      const cToken = await makeCToken({ kind: 'ccollateralcapnointerest', supportMarket: true, interestRateModelOpts: { kind: 'jump-rate', baseRate: .05, multiplier: 0.45, kink: 0.95, jump: 5, roof: 1 } });
+
+      // cash: 10000
+      // borrows: 1000
+      await send(cToken, 'harnessSetInternalCash', [10000]);
+      await send(cToken, 'harnessSetTotalBorrows', [1000]);
+      const perBlock1 = await call(cToken, 'borrowRatePerBlock');
+
+      // cash: 10000
+      // borrows: 2000 (1000 is from evil spell)
+      await send(cToken, 'harnessSetTotalBorrows', [2000]);
+      await send(cToken, 'harnessSetAccountBorrows', [evilSpell, 1000, 0]);
+      const perBlock2 = await call(cToken, 'borrowRatePerBlock');
+      expect(perBlock1).toEqual(perBlock2);
+    });
   });
 
   describe('supplyRatePerBlock', () => {
@@ -96,6 +114,24 @@ describe('CToken', function () {
 
       const perBlock = await call(cToken, 'supplyRatePerBlock');
       expect(Math.abs(perBlock * 2102400 - expectedSuplyRate * 1e18)).toBeLessThanOrEqual(1e8);
+    });
+
+    it("has a supply rate but excludes evil spell", async () => {
+      const evilSpell = '0x560A8E3B79d23b0A525E15C6F3486c6A293DDAd2';
+      const cToken = await makeCToken({ kind: 'ccollateralcapnointerest', supportMarket: true, interestRateModelOpts: { kind: 'jump-rate', baseRate: .05, multiplier: 0.45, kink: 0.95, jump: 5, roof: 1 } });
+
+      // cash: 10000
+      // borrows: 1000
+      await send(cToken, 'harnessSetInternalCash', [10000]);
+      await send(cToken, 'harnessSetTotalBorrows', [2000]);
+      const perBlock1 = await call(cToken, 'supplyRatePerBlock');
+
+      // cash: 10000
+      // borrows: 2000 (1000 is from evil spell)
+      await send(cToken, 'harnessSetTotalBorrows', [2000]);
+      await send(cToken, 'harnessSetAccountBorrows', [evilSpell, 1000, 0]);
+      const perBlock2 = await call(cToken, 'supplyRatePerBlock');
+      expect(Number(perBlock1)).toBeGreaterThan(Number(perBlock2));
     });
   });
 

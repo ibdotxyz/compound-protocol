@@ -144,6 +144,27 @@ async function makeCToken(opts = {}) {
       version = 1; // ccollateralcap's version is 1
       break;
 
+    case 'ccollateralcapnointerest':
+      underlying = opts.underlying || await makeToken(opts.underlyingOpts);
+      cDelegatee = await deploy('CCollateralCapErc20NoInterestDelegateHarness');
+      cDelegator = await deploy('CCollateralCapErc20Delegator',
+        [
+          underlying._address,
+          comptroller._address,
+          interestRateModel._address,
+          exchangeRate,
+          name,
+          symbol,
+          decimals,
+          admin,
+          cDelegatee._address,
+          "0x0"
+        ]
+      );
+      cToken = await saddle.getContractAt('CCollateralCapErc20NoInterestDelegateHarness', cDelegator._address);
+      version = 1; // ccollateralcap's version is 1
+      break;
+
     case 'cslp':
       underlying = opts.underlying || await makeToken(opts.underlyingOpts);
       const sushiToken = await deploy('SushiToken');
