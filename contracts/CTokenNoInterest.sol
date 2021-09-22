@@ -532,6 +532,11 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
+        /* We write the previously calculated values into storage */
+        accountBorrows[borrower].principal = vars.accountBorrowsNew;
+        accountBorrows[borrower].interestIndex = borrowIndex;
+        totalBorrows = vars.totalBorrowsNew;
+
         /*
          * We invoke doTransferOut for the borrower and the borrowAmount.
          *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
@@ -540,17 +545,11 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
          */
         doTransferOut(borrower, borrowAmount, isNative);
 
-        /* We write the previously calculated values into storage */
-        accountBorrows[borrower].principal = vars.accountBorrowsNew;
-        accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = vars.totalBorrowsNew;
-
         /* We emit a Borrow event */
         emit Borrow(borrower, borrowAmount, vars.accountBorrowsNew, vars.totalBorrowsNew);
 
         /* We call the defense hook */
-        // unused function
-        // comptroller.borrowVerify(address(this), borrower, borrowAmount);
+        comptroller.borrowVerify(address(this), borrower, borrowAmount);
 
         return uint256(Error.NO_ERROR);
     }
@@ -664,8 +663,7 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
         emit RepayBorrow(payer, borrower, vars.actualRepayAmount, vars.accountBorrowsNew, vars.totalBorrowsNew);
 
         /* We call the defense hook */
-        // unused function
-        // comptroller.repayBorrowVerify(address(this), payer, borrower, vars.actualRepayAmount, vars.borrowerIndex);
+        comptroller.repayBorrowVerify(address(this), payer, borrower, vars.actualRepayAmount, vars.borrowerIndex);
 
         return (uint256(Error.NO_ERROR), vars.actualRepayAmount);
     }
@@ -699,6 +697,13 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
 
         // liquidateBorrowFresh emits borrow-specific logs on errors, so we don't need to
         return liquidateBorrowFresh(msg.sender, borrower, repayAmount, cTokenCollateral, isNative);
+    }
+
+    struct LiquidateBorrowLocalVars {
+        uint256 repayBorrowError;
+        uint256 actualRepayAmount;
+        uint256 amountSeizeError;
+        uint256 seizeTokens;
     }
 
     /**
@@ -755,15 +760,12 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
             return (fail(Error.INVALID_CLOSE_AMOUNT_REQUESTED, FailureInfo.LIQUIDATE_CLOSE_AMOUNT_IS_UINT_MAX), 0);
         }
 
+        LiquidateBorrowLocalVars memory vars;
+
         /* Fail if repayBorrow fails */
-        (uint256 repayBorrowError, uint256 actualRepayAmount) = repayBorrowFresh(
-            liquidator,
-            borrower,
-            repayAmount,
-            isNative
-        );
-        if (repayBorrowError != uint256(Error.NO_ERROR)) {
-            return (fail(Error(repayBorrowError), FailureInfo.LIQUIDATE_REPAY_BORROW_FRESH_FAILED), 0);
+        (vars.repayBorrowError, vars.actualRepayAmount) = repayBorrowFresh(liquidator, borrower, repayAmount, isNative);
+        if (vars.repayBorrowError != uint256(Error.NO_ERROR)) {
+            return (fail(Error(vars.repayBorrowError), FailureInfo.LIQUIDATE_REPAY_BORROW_FRESH_FAILED), 0);
         }
 
         /////////////////////////
@@ -771,35 +773,44 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
-        (uint256 amountSeizeError, uint256 seizeTokens) = comptroller.liquidateCalculateSeizeTokens(
+        (vars.amountSeizeError, vars.seizeTokens) = comptroller.liquidateCalculateSeizeTokens(
             address(this),
             address(cTokenCollateral),
-            actualRepayAmount
+            vars.actualRepayAmount
         );
-        require(amountSeizeError == uint256(Error.NO_ERROR), "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED");
+        require(
+            vars.amountSeizeError == uint256(Error.NO_ERROR),
+            "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED"
+        );
 
         /* Revert if borrower collateral token balance < seizeTokens */
-        require(cTokenCollateral.balanceOf(borrower) >= seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
+        require(cTokenCollateral.balanceOf(borrower) >= vars.seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
 
         // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
         uint256 seizeError;
         if (address(cTokenCollateral) == address(this)) {
-            seizeError = seizeInternal(address(this), liquidator, borrower, seizeTokens);
+            seizeError = seizeInternal(address(this), liquidator, borrower, vars.seizeTokens);
         } else {
-            seizeError = cTokenCollateral.seize(liquidator, borrower, seizeTokens);
+            seizeError = cTokenCollateral.seize(liquidator, borrower, vars.seizeTokens);
         }
 
         /* Revert if seize tokens fails (since we cannot be sure of side effects) */
         require(seizeError == uint256(Error.NO_ERROR), "token seizure failed");
 
         /* We emit a LiquidateBorrow event */
-        emit LiquidateBorrow(liquidator, borrower, actualRepayAmount, address(cTokenCollateral), seizeTokens);
+        emit LiquidateBorrow(liquidator, borrower, vars.actualRepayAmount, address(cTokenCollateral), vars.seizeTokens);
 
         /* We call the defense hook */
-        // unused function
-        // comptroller.liquidateBorrowVerify(address(this), address(cTokenCollateral), liquidator, borrower, actualRepayAmount, seizeTokens);
+        comptroller.liquidateBorrowVerify(
+            address(this),
+            address(cTokenCollateral),
+            liquidator,
+            borrower,
+            vars.actualRepayAmount,
+            vars.seizeTokens
+        );
 
-        return (uint256(Error.NO_ERROR), actualRepayAmount);
+        return (uint256(Error.NO_ERROR), vars.actualRepayAmount);
     }
 
     /**
