@@ -1,19 +1,16 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "./Denominations.sol";
 import "./PriceOracle.sol";
+import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/BandReference.sol";
-import "./interfaces/CurveTokenInterface.sol";
-import "./interfaces/FeedRegistryInterface.sol";
 import "./interfaces/V1PriceOracleInterface.sol";
-import "./interfaces/YVaultTokenInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
 import "../EIP20Interface.sol";
 
-contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
+contract PriceOracleProxyFTM is PriceOracle, Exponential {
     /// @notice Admin address
     address public admin;
 
@@ -21,10 +18,8 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     address public guardian;
 
     struct AggregatorInfo {
-        /// @notice The base
-        address base;
-        /// @notice The quote denomination
-        address quote;
+        /// @notice The aggregator
+        address aggregator;
         /// @notice It's being used or not.
         bool isUsed;
     }
@@ -36,51 +31,34 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         bool isUsed;
     }
 
+    /// @notice BAND reference
+    StdReferenceInterface public ref;
+
     /// @notice Chainlink Aggregators
     mapping(address => AggregatorInfo) public aggregators;
 
     /// @notice Band Reference
     mapping(address => ReferenceInfo) public references;
 
-    /// @notice Mapping of token to y-vault token
-    mapping(address => address) public yVaults;
-
-    /// @notice Mapping of token to curve swap
-    mapping(address => address) public curveSwap;
-
     /// @notice The v1 price oracle, maintain by CREAM
     V1PriceOracleInterface public v1PriceOracle;
-
-    /// @notice The ChainLink registry address
-    FeedRegistryInterface public reg;
-
-    /// @notice The BAND reference address
-    StdReferenceInterface public ref;
 
     /// @notice Quote symbol we used for BAND reference contract
     string public constant QUOTE_SYMBOL = "USD";
 
-    address public constant y3CRVAddress = 0x9cA85572E6A3EbF24dEDd195623F188735A5179f;
-
     /**
      * @param admin_ The address of admin to set aggregators
-     * @param v1PriceOracle_ The v1 price oracle
-     * @param registry_ The address of ChainLink registry
-     * @param reference_ The address of Band reference
+     * @param v1PriceOracle_ The address of the v1 price oracle, which will continue to operate and hold prices for collateral assets
+     * @param reference_ The price reference contract, which will be served for one of our primary price source on Fantom
      */
     constructor(
         address admin_,
         address v1PriceOracle_,
-        address registry_,
         address reference_
     ) public {
         admin = admin_;
         v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
-        reg = FeedRegistryInterface(registry_);
         ref = StdReferenceInterface(reference_);
-
-        yVaults[y3CRVAddress] = 0x9cA85572E6A3EbF24dEDd195623F188735A5179f; // y-vault 3Crv
-        curveSwap[y3CRVAddress] = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7; // curve 3 pool
     }
 
     /**
@@ -91,22 +69,10 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     function getUnderlyingPrice(CToken cToken) public view returns (uint256) {
         address underlying = CErc20(address(cToken)).underlying();
 
-        // Handle y3Crv.
-        if (underlying == y3CRVAddress) {
-            uint256 yVaultPrice = YVaultV1Interface(yVaults[y3CRVAddress]).getPricePerFullShare();
-            uint256 virtualPrice = CurveSwapInterface(curveSwap[y3CRVAddress]).get_virtual_price();
-            return mul_(yVaultPrice, Exp({mantissa: virtualPrice}));
-        }
-
         // Get price from ChainLink.
         AggregatorInfo storage aggregatorInfo = aggregators[underlying];
         if (aggregatorInfo.isUsed) {
-            uint256 price = getPriceFromChainlink(aggregatorInfo.base, aggregatorInfo.quote);
-            if (aggregatorInfo.quote == Denominations.ETH) {
-                // Convert the price to USD based if it's ETH based.
-                uint256 ethUsdPrice = getPriceFromChainlink(Denominations.ETH, Denominations.USD);
-                price = mul_(price, Exp({mantissa: ethUsdPrice}));
-            }
+            uint256 price = getPriceFromChainlink(aggregatorInfo.aggregator);
             return getNormalizedPrice(price, underlying);
         }
 
@@ -124,17 +90,16 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /*** Internal fucntions ***/
 
     /**
-     * @notice Get price from ChainLink
-     * @param base The base token that ChainLink aggregator gets the price of
-     * @param quote The quote token, currenlty support ETH and USD
+     * @notice Get price from ChainLink.
+     * @param aggregator The aggregator address
      * @return The price, scaled by 1e18
      */
-    function getPriceFromChainlink(address base, address quote) internal view returns (uint256) {
-        (, int256 price, , , ) = reg.latestRoundData(base, quote);
+    function getPriceFromChainlink(address aggregator) internal view returns (uint256) {
+        (, int256 price, , , ) = AggregatorV3Interface(aggregator).latestRoundData();
         require(price > 0, "invalid price");
 
         // Extend the decimals to 1e18.
-        return mul_(uint256(price), 10**(18 - uint256(reg.decimals(base, quote))));
+        return mul_(uint256(price), 10**(18 - uint256(AggregatorV3Interface(aggregator).decimals())));
     }
 
     /**
@@ -170,9 +135,9 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         return v1PriceOracle.assetPrices(token);
     }
 
-    /*** Admin or guardian functions ***/
+    /*** Admin fucntions ***/
 
-    event AggregatorUpdated(address tokenAddress, address base, address quote, bool isUsed);
+    event AggregatorUpdated(address tokenAddress, address aggregator, bool isUsed);
     event ReferenceUpdated(address tokenAddress, string symbol, bool isUsed);
     event SetGuardian(address guardian);
     event SetAdmin(address admin);
@@ -200,29 +165,22 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /**
      * @notice Set ChainLink aggregators for multiple tokens
      * @param tokenAddresses The list of underlying tokens
-     * @param bases The list of ChainLink aggregator bases
-     * @param quotes The list of ChainLink aggregator quotes, currently support 'ETH' and 'USD'
+     * @param aggregatorAddresses The list of ChainLink aggregator addresses
      */
-    function _setAggregators(
-        address[] calldata tokenAddresses,
-        address[] calldata bases,
-        address[] calldata quotes
-    ) external {
+    function _setAggregators(address[] calldata tokenAddresses, address[] calldata aggregatorAddresses) external {
         require(msg.sender == admin || msg.sender == guardian, "only the admin or guardian may set the aggregators");
-        require(tokenAddresses.length == bases.length && tokenAddresses.length == quotes.length, "mismatched data");
+        require(tokenAddresses.length == aggregatorAddresses.length, "mismatched data");
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             bool isUsed;
-            if (bases[i] != address(0)) {
+            if (aggregatorAddresses[i] != address(0)) {
                 require(msg.sender == admin, "guardian may only clear the aggregator");
-                require(quotes[i] == Denominations.ETH || quotes[i] == Denominations.USD, "unsupported denomination");
                 isUsed = true;
 
                 // Make sure the aggregator exists.
-                address aggregator = reg.getFeed(bases[i], quotes[i]);
-                require(reg.isFeedEnabled(aggregator), "aggregator not enabled");
+                getPriceFromChainlink(aggregatorAddresses[i]);
             }
-            aggregators[tokenAddresses[i]] = AggregatorInfo({base: bases[i], quote: quotes[i], isUsed: isUsed});
-            emit AggregatorUpdated(tokenAddresses[i], bases[i], quotes[i], isUsed);
+            aggregators[tokenAddresses[i]] = AggregatorInfo({aggregator: aggregatorAddresses[i], isUsed: isUsed});
+            emit AggregatorUpdated(tokenAddresses[i], aggregatorAddresses[i], isUsed);
         }
     }
 
