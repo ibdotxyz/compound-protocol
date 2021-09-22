@@ -1,6 +1,7 @@
 pragma solidity ^0.5.16;
 
 import "./CToken.sol";
+import "./CTokenNoInterest.sol";
 import "./ERC3156FlashLenderInterface.sol";
 import "./ERC3156FlashBorrowerInterface.sol";
 
@@ -9,7 +10,7 @@ import "./ERC3156FlashBorrowerInterface.sol";
  * @notice CTokens which wrap an EIP-20 underlying with collateral cap
  * @author Cream
  */
-contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
+contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20Interface {
     /**
      * @notice Initialize the new money market
      * @param underlying_ The address of the underlying asset
@@ -297,7 +298,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
          * access accountTokens to call this function to check if accountCollateralTokens needed to be initialized.
          */
         if (!isCollateralTokenInit[account]) {
-            if (ComptrollerInterfaceExtension(address(comptroller)).checkMembership(account, CToken(this))) {
+            if (ComptrollerInterfaceExtension(address(comptroller)).checkMembership(account, CToken(address(this)))) {
                 accountCollateralTokens[account] = accountTokens[account];
                 totalCollateralTokens = add_(totalCollateralTokens, accountTokens[account]);
 
@@ -611,7 +612,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         /*
          * We only allocate collateral tokens if the minter has entered the market.
          */
-        if (ComptrollerInterfaceExtension(address(comptroller)).checkMembership(minter, CToken(this))) {
+        if (ComptrollerInterfaceExtension(address(comptroller)).checkMembership(minter, CToken(address(this)))) {
             increaseUserCollateralInternal(minter, vars.mintTokens);
         }
 

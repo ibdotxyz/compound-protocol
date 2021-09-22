@@ -13,7 +13,9 @@ import "./InterestRateModel.sol";
  * @notice Abstract base for CTokens
  * @author Compound
  */
-contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
+contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
+    address public constant EVIL_SPELL = 0x560A8E3B79d23b0A525E15C6F3486c6A293DDAd2;
+
     /**
      * @notice Initialize the money market
      * @param comptroller_ The address of the Comptroller
@@ -156,23 +158,37 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      *  This exists mainly for inheriting test contracts to stub this result.
      */
     function getBlockNumber() internal view returns (uint256) {
-        return block.timestamp;
+        return block.number;
+    }
+
+    /**
+     * @notice Function to get the evil spell's debt
+     * @return The debt
+     */
+    function getAlphaDebt() internal view returns (uint256) {
+        return accountBorrows[EVIL_SPELL].principal;
     }
 
     /**
      * @notice Returns the current per-block borrow interest rate for this cToken
+     * @dev The total borrows exclude the debts from Alpha
      * @return The borrow interest rate per block, scaled by 1e18
      */
     function borrowRatePerBlock() external view returns (uint256) {
-        return interestRateModel.getBorrowRate(getCashPrior(), totalBorrows, totalReserves);
+        return interestRateModel.getBorrowRate(getCashPrior(), sub_(totalBorrows, getAlphaDebt()), totalReserves);
     }
 
     /**
      * @notice Returns the current per-block supply interest rate for this cToken
+     * @dev The total borrows exclude the debts from Alpha
      * @return The supply interest rate per block, scaled by 1e18
      */
     function supplyRatePerBlock() external view returns (uint256) {
-        return interestRateModel.getSupplyRate(getCashPrior(), totalBorrows, totalReserves, reserveFactorMantissa);
+        uint256 cashPrior = getCashPrior();
+        uint256 borrows = sub_(totalBorrows, getAlphaDebt());
+        uint256 rate = interestRateModel.getSupplyRate(cashPrior, borrows, totalReserves, reserveFactorMantissa);
+        uint256 interest = mul_(rate, sub_(add_(cashPrior, borrows), totalReserves));
+        return div_(interest, sub_(add_(cashPrior, totalBorrows), totalReserves));
     }
 
     /**
@@ -190,7 +206,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
             cashPriorNew = sub_(getCashPrior(), change);
             totalBorrowsNew = add_(totalBorrows, change);
         }
-        return interestRateModel.getBorrowRate(cashPriorNew, totalBorrowsNew, totalReserves);
+        return interestRateModel.getBorrowRate(cashPriorNew, sub_(totalBorrowsNew, getAlphaDebt()), totalReserves);
     }
 
     /**
@@ -209,7 +225,10 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
             totalBorrowsNew = add_(totalBorrows, change);
         }
 
-        return interestRateModel.getSupplyRate(cashPriorNew, totalBorrowsNew, totalReserves, reserveFactorMantissa);
+        uint256 borrows = sub_(totalBorrowsNew, getAlphaDebt());
+        uint256 rate = interestRateModel.getSupplyRate(cashPriorNew, borrows, totalReserves, reserveFactorMantissa);
+        uint256 interest = mul_(rate, sub_(add_(cashPriorNew, borrows), totalReserves));
+        return div_(interest, sub_(add_(cashPriorNew, totalBorrowsNew), totalReserves));
     }
 
     /**
@@ -246,6 +265,11 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return the calculated balance or 0 if error code is non-zero
      */
     function borrowBalanceStoredInternal(address account) internal view returns (uint256) {
+        // The evil spell won't have further borrow interests.
+        if (account == EVIL_SPELL) {
+            return getAlphaDebt();
+        }
+
         /* Get borrowBalance and borrowIndex */
         BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
 
@@ -335,9 +359,14 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         uint256 borrowsPrior = totalBorrows;
         uint256 reservesPrior = totalReserves;
         uint256 borrowIndexPrior = borrowIndex;
+        uint256 borrowPriorForInterestCalculation = sub_(borrowsPrior, getAlphaDebt());
 
         /* Calculate the current borrow interest rate */
-        uint256 borrowRateMantissa = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
+        uint256 borrowRateMantissa = interestRateModel.getBorrowRate(
+            cashPrior,
+            borrowPriorForInterestCalculation,
+            reservesPrior
+        );
         require(borrowRateMantissa <= borrowRateMaxMantissa, "borrow rate is absurdly high");
 
         /* Calculate the number of blocks elapsed since the last accrual */
@@ -353,7 +382,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
          */
 
         Exp memory simpleInterestFactor = mul_(Exp({mantissa: borrowRateMantissa}), blockDelta);
-        uint256 interestAccumulated = mul_ScalarTruncate(simpleInterestFactor, borrowsPrior);
+        uint256 interestAccumulated = mul_ScalarTruncate(simpleInterestFactor, borrowPriorForInterestCalculation);
         uint256 totalBorrowsNew = add_(interestAccumulated, borrowsPrior);
         uint256 totalReservesNew = mul_ScalarTruncateAddUInt(
             Exp({mantissa: reserveFactorMantissa}),
@@ -503,11 +532,6 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /* We write the previously calculated values into storage */
-        accountBorrows[borrower].principal = vars.accountBorrowsNew;
-        accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = vars.totalBorrowsNew;
-
         /*
          * We invoke doTransferOut for the borrower and the borrowAmount.
          *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
@@ -516,11 +540,17 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
          */
         doTransferOut(borrower, borrowAmount, isNative);
 
+        /* We write the previously calculated values into storage */
+        accountBorrows[borrower].principal = vars.accountBorrowsNew;
+        accountBorrows[borrower].interestIndex = borrowIndex;
+        totalBorrows = vars.totalBorrowsNew;
+
         /* We emit a Borrow event */
         emit Borrow(borrower, borrowAmount, vars.accountBorrowsNew, vars.totalBorrowsNew);
 
         /* We call the defense hook */
-        comptroller.borrowVerify(address(this), borrower, borrowAmount);
+        // unused function
+        // comptroller.borrowVerify(address(this), borrower, borrowAmount);
 
         return uint256(Error.NO_ERROR);
     }
@@ -634,7 +664,8 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         emit RepayBorrow(payer, borrower, vars.actualRepayAmount, vars.accountBorrowsNew, vars.totalBorrowsNew);
 
         /* We call the defense hook */
-        comptroller.repayBorrowVerify(address(this), payer, borrower, vars.actualRepayAmount, vars.borrowerIndex);
+        // unused function
+        // comptroller.repayBorrowVerify(address(this), payer, borrower, vars.actualRepayAmount, vars.borrowerIndex);
 
         return (uint256(Error.NO_ERROR), vars.actualRepayAmount);
     }
@@ -668,13 +699,6 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
 
         // liquidateBorrowFresh emits borrow-specific logs on errors, so we don't need to
         return liquidateBorrowFresh(msg.sender, borrower, repayAmount, cTokenCollateral, isNative);
-    }
-
-    struct LiquidateBorrowLocalVars {
-        uint256 repayBorrowError;
-        uint256 actualRepayAmount;
-        uint256 amountSeizeError;
-        uint256 seizeTokens;
     }
 
     /**
@@ -731,12 +755,15 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
             return (fail(Error.INVALID_CLOSE_AMOUNT_REQUESTED, FailureInfo.LIQUIDATE_CLOSE_AMOUNT_IS_UINT_MAX), 0);
         }
 
-        LiquidateBorrowLocalVars memory vars;
-
         /* Fail if repayBorrow fails */
-        (vars.repayBorrowError, vars.actualRepayAmount) = repayBorrowFresh(liquidator, borrower, repayAmount, isNative);
-        if (vars.repayBorrowError != uint256(Error.NO_ERROR)) {
-            return (fail(Error(vars.repayBorrowError), FailureInfo.LIQUIDATE_REPAY_BORROW_FRESH_FAILED), 0);
+        (uint256 repayBorrowError, uint256 actualRepayAmount) = repayBorrowFresh(
+            liquidator,
+            borrower,
+            repayAmount,
+            isNative
+        );
+        if (repayBorrowError != uint256(Error.NO_ERROR)) {
+            return (fail(Error(repayBorrowError), FailureInfo.LIQUIDATE_REPAY_BORROW_FRESH_FAILED), 0);
         }
 
         /////////////////////////
@@ -744,44 +771,35 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
-        (vars.amountSeizeError, vars.seizeTokens) = comptroller.liquidateCalculateSeizeTokens(
+        (uint256 amountSeizeError, uint256 seizeTokens) = comptroller.liquidateCalculateSeizeTokens(
             address(this),
             address(cTokenCollateral),
-            vars.actualRepayAmount
+            actualRepayAmount
         );
-        require(
-            vars.amountSeizeError == uint256(Error.NO_ERROR),
-            "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED"
-        );
+        require(amountSeizeError == uint256(Error.NO_ERROR), "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED");
 
         /* Revert if borrower collateral token balance < seizeTokens */
-        require(cTokenCollateral.balanceOf(borrower) >= vars.seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
+        require(cTokenCollateral.balanceOf(borrower) >= seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
 
         // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
         uint256 seizeError;
         if (address(cTokenCollateral) == address(this)) {
-            seizeError = seizeInternal(address(this), liquidator, borrower, vars.seizeTokens);
+            seizeError = seizeInternal(address(this), liquidator, borrower, seizeTokens);
         } else {
-            seizeError = cTokenCollateral.seize(liquidator, borrower, vars.seizeTokens);
+            seizeError = cTokenCollateral.seize(liquidator, borrower, seizeTokens);
         }
 
         /* Revert if seize tokens fails (since we cannot be sure of side effects) */
         require(seizeError == uint256(Error.NO_ERROR), "token seizure failed");
 
         /* We emit a LiquidateBorrow event */
-        emit LiquidateBorrow(liquidator, borrower, vars.actualRepayAmount, address(cTokenCollateral), vars.seizeTokens);
+        emit LiquidateBorrow(liquidator, borrower, actualRepayAmount, address(cTokenCollateral), seizeTokens);
 
         /* We call the defense hook */
-        comptroller.liquidateBorrowVerify(
-            address(this),
-            address(cTokenCollateral),
-            liquidator,
-            borrower,
-            vars.actualRepayAmount,
-            vars.seizeTokens
-        );
+        // unused function
+        // comptroller.liquidateBorrowVerify(address(this), address(cTokenCollateral), liquidator, borrower, actualRepayAmount, seizeTokens);
 
-        return (uint256(Error.NO_ERROR), vars.actualRepayAmount);
+        return (uint256(Error.NO_ERROR), actualRepayAmount);
     }
 
     /**
