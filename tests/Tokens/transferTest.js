@@ -67,8 +67,7 @@ describe('CToken', function () {
 
       await send(cToken.comptroller, 'setTransferAllowed', [true])
       await send(cToken.comptroller, 'setTransferVerify', [false])
-      // no longer support verifyTransfer on cToken end
-      // await expect(send(cToken, 'transfer', [accounts[0], 50])).rejects.toRevert("revert transferVerify rejected transfer");
+      await expect(send(cToken, 'transfer', [accounts[0], 50])).rejects.toRevert("revert transferVerify rejected transfer");
     });
 
     it("transfers cslp token", async () => {
