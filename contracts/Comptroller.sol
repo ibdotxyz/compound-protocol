@@ -64,7 +64,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     event NewSupplyCapGuardian(address oldSupplyCapGuardian, address newSupplyCapGuardian);
 
     /// @notice Emitted when protocol's credit limit has changed
-    event CreditLimitChanged(address protocol, uint256 creditLimit);
+    event CreditLimitChanged(address protocol, address market, uint256 creditLimit);
 
     /// @notice Emitted when cToken version is changed
     event NewCTokenVersion(CToken cToken, Version oldVersion, Version newVersion);
@@ -244,7 +244,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     ) external returns (uint256) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!mintGuardianPaused[cToken], "mint is paused");
-        require(!isCreditAccount(minter), "credit account cannot mint");
+        require(!isCreditAccount(minter, cToken), "credit account cannot mint");
 
         if (!isMarketListed(cToken)) {
             return uint256(Error.MARKET_NOT_LISTED);
@@ -465,7 +465,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             return uint256(Error.MARKET_NOT_LISTED);
         }
 
-        if (isCreditAccount(borrower)) {
+        if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
         }
 
@@ -514,7 +514,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address borrower,
         uint256 repayAmount
     ) external returns (uint256) {
-        require(!isCreditAccount(borrower), "cannot liquidate credit account");
+        require(!isCreditAccount(borrower, cTokenBorrowed), "cannot liquidate credit account");
 
         // Shh - currently unused
         liquidator;
@@ -589,7 +589,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     ) external returns (uint256) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!seizeGuardianPaused, "seize is paused");
-        require(!isCreditAccount(borrower), "cannot sieze from credit account");
+        require(!isCreditAccount(borrower, cTokenBorrowed), "cannot sieze from credit account");
 
         // Shh - currently unused
         liquidator;
@@ -650,7 +650,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     ) external returns (uint256) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!transferGuardianPaused, "transfer is paused");
-        require(!isCreditAccount(dst), "cannot transfer to a credit account");
+        require(!isCreditAccount(dst, cToken), "cannot transfer to a credit account");
 
         // Shh - currently unused
         dst;
@@ -724,10 +724,11 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /**
      * @notice Check if the account is a credit account
      * @param account The account needs to be checked
+     * @param cToken The market
      * @return The account is a credit account or not
      */
-    function isCreditAccount(address account) public view returns (bool) {
-        return creditLimits[account] > 0;
+    function isCreditAccount(address account, address cToken) public view returns (bool) {
+        return creditLimits[account][cToken] > 0;
     }
 
     /*** Liquidity/Liquidation Calculations ***/
@@ -852,11 +853,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             uint256
         )
     {
-        // If credit limit is set to MAX, no need to check account liquidity.
-        if (creditLimits[account] == uint256(-1)) {
-            return (Error.NO_ERROR, uint256(-1), 0);
-        }
-
         AccountLiquidityLocalVars memory vars; // Holds all our calculation results
         uint256 oErr;
 
@@ -874,58 +870,69 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
                 return (Error.SNAPSHOT_ERROR, 0, 0);
             }
 
-            // Unlike compound protocol, getUnderlyingPrice is relatively expensive because we use ChainLink as our primary price feed.
-            // If user has no supply / borrow balance on this asset, and user is not redeeming / borrowing this asset, skip it.
-            if (vars.cTokenBalance == 0 && vars.borrowBalance == 0 && asset != cTokenModify) {
-                continue;
-            }
+            // Once a market's credit limit is set, the account's collateral won't be considered anymore.
+            uint256 creditLimit = creditLimits[account][address(asset)];
+            if (creditLimit > 0) {
+                // The market's credit limit should be always greater than its borrow balance and the borrow balance won't be added to sumBorrowPlusEffects.
+                require(creditLimit >= vars.borrowBalance, "insufficient credit limit");
 
-            vars.collateralFactor = Exp({mantissa: markets[address(asset)].collateralFactorMantissa});
-            vars.exchangeRate = Exp({mantissa: vars.exchangeRateMantissa});
+                if (asset == cTokenModify) {
+                    // borrowAmount must not exceed the credit limit.
+                    require(creditLimit >= add_(vars.borrowBalance, borrowAmount), "insufficient credit limit");
+                }
+            } else {
+                // Unlike compound protocol, getUnderlyingPrice is relatively expensive because we use ChainLink as our primary price feed.
+                // If user has no supply / borrow balance on this asset, and user is not redeeming / borrowing this asset, skip it.
+                if (vars.cTokenBalance == 0 && vars.borrowBalance == 0 && asset != cTokenModify) {
+                    continue;
+                }
 
-            // Get the normalized price of the asset
-            vars.oraclePriceMantissa = oracle.getUnderlyingPrice(asset);
-            if (vars.oraclePriceMantissa == 0) {
-                return (Error.PRICE_ERROR, 0, 0);
-            }
-            vars.oraclePrice = Exp({mantissa: vars.oraclePriceMantissa});
+                vars.collateralFactor = Exp({mantissa: markets[address(asset)].collateralFactorMantissa});
+                vars.exchangeRate = Exp({mantissa: vars.exchangeRateMantissa});
 
-            // Pre-compute a conversion factor from tokens -> ether (normalized price value)
-            vars.tokensToDenom = mul_(mul_(vars.collateralFactor, vars.exchangeRate), vars.oraclePrice);
+                // Get the normalized price of the asset
+                vars.oraclePriceMantissa = oracle.getUnderlyingPrice(asset);
+                if (vars.oraclePriceMantissa == 0) {
+                    return (Error.PRICE_ERROR, 0, 0);
+                }
+                vars.oraclePrice = Exp({mantissa: vars.oraclePriceMantissa});
 
-            // sumCollateral += tokensToDenom * cTokenBalance
-            vars.sumCollateral = mul_ScalarTruncateAddUInt(vars.tokensToDenom, vars.cTokenBalance, vars.sumCollateral);
+                // Pre-compute a conversion factor from tokens -> ether (normalized price value)
+                vars.tokensToDenom = mul_(mul_(vars.collateralFactor, vars.exchangeRate), vars.oraclePrice);
 
-            // sumBorrowPlusEffects += oraclePrice * borrowBalance
-            vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
-                vars.oraclePrice,
-                vars.borrowBalance,
-                vars.sumBorrowPlusEffects
-            );
-
-            // Calculate effects of interacting with cTokenModify
-            if (asset == cTokenModify) {
-                // redeem effect
-                // sumBorrowPlusEffects += tokensToDenom * redeemTokens
-                vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
+                // sumCollateral += tokensToDenom * cTokenBalance
+                vars.sumCollateral = mul_ScalarTruncateAddUInt(
                     vars.tokensToDenom,
-                    redeemTokens,
-                    vars.sumBorrowPlusEffects
+                    vars.cTokenBalance,
+                    vars.sumCollateral
                 );
 
-                // borrow effect
-                // sumBorrowPlusEffects += oraclePrice * borrowAmount
+                // sumBorrowPlusEffects += oraclePrice * borrowBalance
                 vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
                     vars.oraclePrice,
-                    borrowAmount,
+                    vars.borrowBalance,
                     vars.sumBorrowPlusEffects
                 );
-            }
-        }
 
-        // If credit limit is set, no need to consider collateral.
-        if (creditLimits[account] > 0) {
-            vars.sumCollateral = creditLimits[account];
+                // Calculate effects of interacting with cTokenModify
+                if (asset == cTokenModify) {
+                    // redeem effect
+                    // sumBorrowPlusEffects += tokensToDenom * redeemTokens
+                    vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
+                        vars.tokensToDenom,
+                        redeemTokens,
+                        vars.sumBorrowPlusEffects
+                    );
+
+                    // borrow effect
+                    // sumBorrowPlusEffects += oraclePrice * borrowAmount
+                    vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
+                        vars.oraclePrice,
+                        borrowAmount,
+                        vars.sumBorrowPlusEffects
+                    );
+                }
+            }
         }
 
         // These are safe, as the underflow condition is checked first
@@ -1315,15 +1322,21 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
-     * @notice Sets whitelisted protocol's credit limit
+     * @notice Sets protocol's credit limit by market
      * @param protocol The address of the protocol
+     * @param market The market
      * @param creditLimit The credit limit
      */
-    function _setCreditLimit(address protocol, uint256 creditLimit) public {
+    function _setCreditLimit(
+        address protocol,
+        address market,
+        uint256 creditLimit
+    ) public {
         require(msg.sender == admin, "only admin can set protocol credit limit");
+        require(addToMarketInternal(CToken(market), protocol) == Error.NO_ERROR, "invalid market");
 
-        creditLimits[protocol] = creditLimit;
-        emit CreditLimitChanged(protocol, creditLimit);
+        creditLimits[protocol][market] = creditLimit;
+        emit CreditLimitChanged(protocol, market, creditLimit);
     }
 
     /**
