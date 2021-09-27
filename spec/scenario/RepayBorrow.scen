@@ -141,7 +141,7 @@ Test "Prohibit repay by comptroller for cannot repay on behalf of a credit accou
     NewCToken BAT cBAT
     Give cBAT 10e18 BAT -- Faucet some bat to borrow
     Support cBAT collateralFactor:0.5
-    Comptroller SetCreditLimit Geoff 100e18
+    Comptroller SetCreditLimit Geoff cBAT 100e18
     Borrow Geoff 1e18 cBAT
     Assert Equal (cToken cBAT BorrowBalance Geoff) (Exactly 1e18)
     Assert Equal (Erc20 BAT TokenBalance Geoff) (Exactly 1e18)
