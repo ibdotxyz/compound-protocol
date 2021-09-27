@@ -162,6 +162,27 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
     }
 
     /**
+     * @notice Sender repays a borrow belonging to borrower
+     * @param borrower the account with the debt being payed off
+     * @param repayAmount The amount to repay
+     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+     */
+    function repayBorrowBehalf(address borrower, uint256 repayAmount) external returns (uint256) {
+        (uint256 err, ) = repayBorrowBehalfInternal(borrower, repayAmount, false);
+        require(err == 0, "repay behalf failed");
+    }
+
+    /**
+     * @notice Sender repays a borrow belonging to borrower
+     * @param borrower the account with the debt being payed off
+     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+     */
+    function repayBorrowBehalfNative(address borrower) external payable returns (uint256) {
+        (uint256 err, ) = repayBorrowBehalfInternal(borrower, msg.value, true);
+        require(err == 0, "repay behalf native failed");
+    }
+
+    /**
      * @notice The sender liquidates the borrowers collateral.
      *  The collateral seized is transferred to the liquidator.
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
