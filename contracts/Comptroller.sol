@@ -459,12 +459,14 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         uint256 repayAmount
     ) external returns (uint256) {
         // Shh - currently unused
-        payer;
-        borrower;
         repayAmount;
 
         if (!isMarketListed(cToken)) {
             return uint256(Error.MARKET_NOT_LISTED);
+        }
+
+        if (isCreditAccount(borrower)) {
+            require(borrower == payer, "cannot repay on behalf of credit account");
         }
 
         return uint256(Error.NO_ERROR);
