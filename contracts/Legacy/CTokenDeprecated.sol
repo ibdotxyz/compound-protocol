@@ -1,12 +1,12 @@
 pragma solidity ^0.5.16;
 
-import "./ComptrollerInterface.sol";
-import "./CTokenInterfaces.sol";
-import "./ErrorReporter.sol";
-import "./Exponential.sol";
-import "./EIP20Interface.sol";
-import "./EIP20NonStandardInterface.sol";
-import "./InterestRateModel.sol";
+import "../ComptrollerInterface.sol";
+import "../CTokenInterfaces.sol";
+import "../ErrorReporter.sol";
+import "../Exponential.sol";
+import "../EIP20Interface.sol";
+import "../EIP20NonStandardInterface.sol";
+import "../InterestRateModel.sol";
 
 /**
  * @title Deprecated CToken Contract only for CEther.
