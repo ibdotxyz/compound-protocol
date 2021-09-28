@@ -392,28 +392,6 @@ export function comptrollerFetchers() {
         ],
         async (world, {comptroller, cToken}) => new BoolV(await comptroller.methods.borrowGuardianPaused(cToken._address).call())
     ),
-    new Fetcher<{comptroller: Comptroller, signature: StringV, callArgs: StringV[]}, NumberV>(`
-        #### CallNum
-
-        * "CallNum signature:<String> ...callArgs<CoreValue>" - Simple direct call method
-          * E.g. "Comptroller CallNum \"compSpeeds(address)\" (Address Coburn)"
-      `,
-      "CallNum",
-      [
-        new Arg("comptroller", getComptroller, {implicit: true}),
-        new Arg("signature", getStringV),
-        new Arg("callArgs", getCoreValue, {variadic: true, mapped: true})
-      ],
-      async (world, {comptroller, signature, callArgs}) => {
-        const fnData = encodeABI(world, signature.val, callArgs.map(a => a.val));
-        const res = await world.web3.eth.call({
-            to: comptroller._address,
-            data: fnData
-          })
-        const resNum : any = world.web3.eth.abi.decodeParameter('uint256',res);
-        return new NumberV(resNum);
-      }
-    ),
     new Fetcher<{comptroller: Comptroller}, AddressV>(`
         #### SupplyCapGuardian
 

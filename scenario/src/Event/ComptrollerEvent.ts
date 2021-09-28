@@ -364,12 +364,12 @@ async function setBlockNumber(world: World, from: string, comptroller: Comptroll
   return world;
 }
 
-async function setCreditLimit(world: World, from: string, comptroller: Comptroller, protocol: string, creditLimit: NumberV): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods._setCreditLimit(protocol, creditLimit.encode()), from, ComptrollerErrorReporter);
+async function setCreditLimit(world: World, from: string, comptroller: Comptroller, protocol: string, market: string, creditLimit: NumberV): Promise<World> {
+  let invokation = await invoke(world, comptroller.methods._setCreditLimit(protocol, market, creditLimit.encode()), from, ComptrollerErrorReporter);
 
   return addAction(
     world,
-    `Set ${protocol} credit limit to ${creditLimit.show()}`,
+    `Set ${market} credit limit of ${protocol} to ${creditLimit.show()}`,
     invokation
   );
 }
@@ -708,19 +708,19 @@ export function comptrollerCommands() {
       ],
       (world, from, {comptroller, blockNumber}) => setBlockNumber(world, from, comptroller, blockNumber)
     ),
-    new Command<{comptroller: Comptroller, protocol: AddressV, creditLimit: NumberV}>(`
+    new Command<{comptroller: Comptroller, protocol: AddressV, market: AddressV, creditLimit: NumberV}>(`
         #### SetCreditLimit
-
-        * "Comptroller SetCreditLimit <Protocol> <CreditLimit>" - Sets the credit limit of a protocol
-        * E.g. "Comptroller SetCreditLimit Geoff 100"
+        * "Comptroller SetCreditLimit <Protocol> <Market> <CreditLimit>" - Sets the market credit limit of a protocol
+        * E.g. "Comptroller SetCreditLimit Geoff cZRX 100"
       `,
       'SetCreditLimit',
       [
         new Arg('comptroller', getComptroller, {implicit: true}),
         new Arg('protocol', getAddressV),
+        new Arg('market', getAddressV),
         new Arg('creditLimit', getNumberV)
       ],
-      (world, from, {comptroller, protocol, creditLimit}) => setCreditLimit(world, from, comptroller, protocol.val, creditLimit)
+      (world, from, {comptroller, protocol, market, creditLimit}) => setCreditLimit(world, from, comptroller, protocol.val, market.val, creditLimit)
     ),
   ];
 }
