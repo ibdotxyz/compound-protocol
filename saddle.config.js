@@ -80,29 +80,6 @@ module.exports = {
         {unlocked: 0}
       ]
     },
-    fantom: {
-      providers: [
-        {http: "https://rpcapi.fantom.network"}
-      ],
-      web3: {
-        gas: [
-          {env: "GAS"},
-          {default: "6000000"}
-        ],
-        gas_price: [
-          {env: "GAS_PRICE"},
-          {default: "22000000000"}
-        ],
-        options: {
-          transactionConfirmationBlocks: 1,
-          transactionBlockTimeout: 5
-        }
-      },
-      accounts: [
-        {env: "ACCOUNT"},
-        {file: "~/.ethereum/fantom"}
-      ]
-    },
     goerli: {
       providers: [
         {env: "PROVIDER"},
@@ -256,7 +233,7 @@ module.exports = {
     },
     fantom: {
       providers: [
-        {http: "https://rpcapi.fantom.network"}
+        {http: "https://rpc.ftm.tools"}
       ],
       web3: {
         gas: [
@@ -265,7 +242,7 @@ module.exports = {
         ],
         gas_price: [
           {env: "GAS_PRICE"},
-          {default: "22000000000"}
+          {default: "240000000000"}
         ],
         options: {
           transactionConfirmationBlocks: 1,
