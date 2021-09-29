@@ -1,13 +1,13 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../../contracts/CErc20Immutable.sol";
+import "../../contracts/Legacy/CErc20Immutable.sol";
 import "../../contracts/CErc20Delegator.sol";
 import "../../contracts/CErc20Delegate.sol";
-import "../../contracts/CSLPDelegate.sol";
-import "../../contracts/CCTokenDelegate.sol";
+import "../../contracts/Legacy/CSLPDelegate.sol";
+import "../../contracts/Legacy/CCTokenDelegate.sol";
 import "../../contracts/CCollateralCapErc20Delegate.sol";
-import "../../contracts/CCollateralCapErc20Delegator.sol";
+import "../../contracts/Legacy/CCollateralCapErc20Delegator.sol";
 import "../../contracts/CWrappedNativeDelegate.sol";
 import "../../contracts/CWrappedNativeDelegator.sol";
 import "./ComptrollerScenario.sol";

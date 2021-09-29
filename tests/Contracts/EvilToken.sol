@@ -1,7 +1,7 @@
 pragma solidity ^0.5.16;
 
 import "./FaucetToken.sol";
-import "../../contracts/CEther.sol";
+import "../../contracts/Legacy/CEther.sol";
 import "../../contracts/CCollateralCapErc20.sol";
 
 /**

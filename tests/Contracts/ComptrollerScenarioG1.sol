@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "../../contracts/ComptrollerG1.sol";
+import "../../contracts/Legacy/ComptrollerG1.sol";
 import "../../contracts/PriceOracle/PriceOracle.sol";
 
 // XXX we should delete G1 everything...
