@@ -12,7 +12,8 @@ const {
   fastForward,
   pretendBorrow,
   getBalances,
-  adjustBalances
+  adjustBalances,
+  setBalance
 } = require('../Utils/Compound');
 
 const BigNumber = require('bignumber.js');
@@ -71,6 +72,11 @@ async function repayBorrow(cToken, borrower, repayAmount) {
 async function repayBorrowBehalfNative(cToken, payer, borrower, repayAmount) {
   await send(cToken, 'harnessFastForward', [1]);
   return send(cToken, 'repayBorrowBehalfNative', [borrower], {from: payer, value: repayAmount});
+}
+
+async function repayBorrowBehalf(cToken, payer, borrower, repayAmount) {
+  await send(cToken, 'harnessFastForward', [1]);
+  return send(cToken, 'repayBorrowBehalf', [borrower, repayAmount], {from: payer});
 }
 
 describe('CWrappedNative', function () {
@@ -356,6 +362,76 @@ describe('CWrappedNative', function () {
       const beforeAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
       let tooMuch = new BigNumber(beforeAccountBorrowSnap.principal).plus(1);
       await expect(repayBorrow(cToken, borrower, tooMuch)).rejects.toRevert("revert subtraction underflow");
+    });
+  });
+
+  describe('repayBorrowBehalfNative', () => {
+    let payer;
+
+    beforeEach(async () => {
+      payer = benefactor;
+      await preRepay(cToken, payer, borrower, repayAmount);
+    });
+
+    it("reverts if interest accrual fails", async () => {
+      await send(cToken.interestRateModel, 'setFailBorrowRate', [true]);
+      await expect(repayBorrowBehalfNative(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert INTEREST_RATE_MODEL_ERROR");
+    });
+
+    it("reverts when repay borrow fresh fails", async () => {
+      await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
+      await expect(repayBorrowBehalfNative(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert repay behalf native failed");
+    });
+
+    it("returns success from repayBorrowFresh and repays the right amount", async () => {
+      await fastForward(cToken);
+      const beforeAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
+      expect(await repayBorrowBehalfNative(cToken, payer, borrower, repayAmount)).toSucceed();
+      const afterAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
+      expect(afterAccountBorrowSnap.principal).toEqualNumber(beforeAccountBorrowSnap.principal.minus(repayAmount));
+    });
+
+    it("reverts if overpaying", async () => {
+      const beforeAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
+      let tooMuch = new BigNumber(beforeAccountBorrowSnap.principal).plus(1);
+      await expect(repayBorrowBehalfNative(cToken, payer, borrower, tooMuch)).rejects.toRevert("revert subtraction underflow");
+    });
+  });
+
+  describe('repayBorrowBehalf', () => {
+    let payer;
+
+    beforeEach(async () => {
+      payer = benefactor;
+      await preRepay(cToken, payer, borrower, repayAmount);
+
+      // Give some weth to payer for repayment.
+      await send(cToken.underlying, 'deposit', [], { from: payer, value: repayAmount.multipliedBy(2) });
+      await send(cToken.underlying, 'approve', [cToken._address, repayAmount.multipliedBy(2)], { from: payer });
+    });
+
+    it("reverts if interest accrual fails", async () => {
+      await send(cToken.interestRateModel, 'setFailBorrowRate', [true]);
+      await expect(repayBorrowBehalf(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert INTEREST_RATE_MODEL_ERROR");
+    });
+
+    it("reverts when repay borrow fresh fails", async () => {
+      await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
+      await expect(repayBorrowBehalf(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert repay behalf failed");
+    });
+
+    it("returns success from repayBorrowFresh and repays the right amount", async () => {
+      await fastForward(cToken);
+      const beforeAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
+      expect(await repayBorrowBehalf(cToken, payer, borrower, repayAmount)).toSucceed();
+      const afterAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
+      expect(afterAccountBorrowSnap.principal).toEqualNumber(beforeAccountBorrowSnap.principal.minus(repayAmount));
+    });
+
+    it("reverts if overpaying", async () => {
+      const beforeAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
+      let tooMuch = new BigNumber(beforeAccountBorrowSnap.principal).plus(1);
+      await expect(repayBorrowBehalf(cToken, payer, borrower, tooMuch)).rejects.toRevert("revert subtraction underflow");
     });
   });
 });

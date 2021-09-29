@@ -199,6 +199,40 @@ async function repayBorrowNative(world: World, from: string, cToken: CToken): Pr
   return world;
 }
 
+async function repayBorrowBehalf(world: World, from: string, behalf: string, cToken: CToken, amount: NumberV | NothingV): Promise<World> {
+  let invokation;
+  let showAmount;
+
+  if (amount instanceof NumberV) {
+    showAmount = amount.show();
+    invokation = await invoke(world, cToken.methods.repayBorrowBehalf(behalf, amount.encode()), from, CTokenErrorReporter);
+  } else {
+    showAmount = showTrxValue(world);
+    invokation = await invoke(world, cToken.methods.repayBorrowBehalf(behalf), from, CTokenErrorReporter);
+  }
+
+  world = addAction(
+    world,
+    `CToken ${cToken.name}: ${describeUser(world, from)} repays ${showAmount} of borrow on behalf of ${describeUser(world, behalf)}`,
+    invokation
+  );
+
+  return world;
+}
+
+async function repayBorrowBehalfNative(world: World, from: string, behalf: string, cToken: CToken): Promise<World> {
+  const showAmount = showTrxValue(world);
+  let invokation = await invoke(world, cToken.methods.repayBorrowBehalfNative(behalf), from, CTokenErrorReporter);
+
+  world = addAction(
+    world,
+    `CToken ${cToken.name}: ${describeUser(world, from)} repays ${showAmount} of borrow on behalf of ${describeUser(world, behalf)}`,
+    invokation
+  );
+
+  return world;
+}
+
 async function liquidateBorrow(world: World, from: string, cToken: CToken, borrower: string, collateral: CToken, repayAmount: NumberV | NothingV): Promise<World> {
   let invokation;
   let showAmount;
@@ -719,6 +753,34 @@ export function cTokenCommands() {
         new Arg("cToken", getCTokenV)
       ],
       (world, from, { cToken, amount }) => repayBorrowNative(world, from, cToken),
+      { namePos: 1 }
+    ),
+    new Command<{ cToken: CToken, behalf: AddressV, amount: NumberV | NothingV }>(`
+        #### RepayBorrowBehalf
+        * "CToken <cToken> RepayBorrowBehalf behalf:<User> underlyingAmount:<Number>" - Repays borrow in the given underlying amount on behalf of another user
+          * E.g. "CToken cZRX RepayBorrowBehalf Geoff 1.0e18"
+      `,
+      "RepayBorrowBehalf",
+      [
+        new Arg("cToken", getCTokenV),
+        new Arg("behalf", getAddressV),
+        new Arg("amount", getNumberV, { nullable: true })
+      ],
+      (world, from, { cToken, behalf, amount }) => repayBorrowBehalf(world, from, behalf.val, cToken, amount),
+      { namePos: 1 }
+    ),
+    new Command<{ cToken: CToken, behalf: AddressV, amount: NumberV | NothingV }>(`
+        #### RepayBorrowBehalfNative
+
+        * "CToken <cToken> RepayBorrowBehalfNative behalf:<User>" - Repays borrow in the given underlying amount on behalf of another user
+          * E.g. "CToken cZRX RepayBorrowBehalfNative Geoff"
+      `,
+      "RepayBorrowBehalfNative",
+      [
+        new Arg("cToken", getCTokenV),
+        new Arg("behalf", getAddressV)
+      ],
+      (world, from, { cToken, behalf, amount }) => repayBorrowBehalfNative(world, from, behalf.val, cToken),
       { namePos: 1 }
     ),
     new Command<{ borrower: AddressV, cToken: CToken, collateral: CToken, repayAmount: NumberV | NothingV }>(`

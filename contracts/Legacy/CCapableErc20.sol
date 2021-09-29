@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "./CToken.sol";
+import "../CToken.sol";
 
 /**
  * @title Deprecated Cream's CCapableErc20 Contract
@@ -84,6 +84,17 @@ contract CCapableErc20 is CToken, CCapableErc20Interface {
      */
     function repayBorrow(uint256 repayAmount) external returns (uint256) {
         (uint256 err, ) = repayBorrowInternal(repayAmount, false);
+        return err;
+    }
+
+    /**
+     * @notice Sender repays a borrow belonging to borrower
+     * @param borrower the account with the debt being payed off
+     * @param repayAmount The amount to repay
+     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+     */
+    function repayBorrowBehalf(address borrower, uint256 repayAmount) external returns (uint256) {
+        (uint256 err, ) = repayBorrowBehalfInternal(borrower, repayAmount, false);
         return err;
     }
 
