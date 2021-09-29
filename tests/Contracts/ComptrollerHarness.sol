@@ -1,7 +1,6 @@
 pragma solidity ^0.5.16;
 
 import "../../contracts/Comptroller.sol";
-import "../../contracts/ComptrollerG1.sol";
 import "../../contracts/CToken.sol";
 import "../../contracts/PriceOracle/PriceOracle.sol";
 

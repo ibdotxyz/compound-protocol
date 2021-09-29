@@ -1,6 +1,6 @@
 pragma solidity ^0.5.16;
 
-import "./CTokenInterfaces.sol";
+import "../CTokenInterfaces.sol";
 
 /**
  * @title Cream's CCollateralCapErc20Delegator Contract
