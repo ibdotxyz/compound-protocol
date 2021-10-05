@@ -69,7 +69,7 @@ describe('CToken', function () {
     it("has a borrow rate", async () => {
       const cToken = await makeCToken({ supportMarket: true, interestRateModelOpts: { kind: 'jump-rate', baseRate: .05, multiplier: 0.45, kink: 0.95, jump: 5, roof: 1 } });
       const perBlock = await call(cToken, 'borrowRatePerBlock');
-      expect(Math.abs(perBlock * 15768000 - 5e16)).toBeLessThanOrEqual(1e8);
+      expect(Math.abs(perBlock * 31536000 - 5e16)).toBeLessThanOrEqual(1e8);
     });
 
     it("has a borrow rate but excludes evil spell", async () => {
@@ -113,7 +113,7 @@ describe('CToken', function () {
       const expectedSuplyRate = borrowRate * .99;
 
       const perBlock = await call(cToken, 'supplyRatePerBlock');
-      expect(Math.abs(perBlock * 15768000 - expectedSuplyRate * 1e18)).toBeLessThanOrEqual(1e8);
+      expect(Math.abs(perBlock * 31536000 - expectedSuplyRate * 1e18)).toBeLessThanOrEqual(1e8);
     });
 
     it("has a supply rate but excludes evil spell", async () => {
