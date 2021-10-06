@@ -538,7 +538,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
             return (fail(Error(error), FailureInfo.REPAY_BORROW_ACCRUE_INTEREST_FAILED), 0);
         }
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
-        return repayBorrowFresh(msg.sender, msg.sender, repayAmount, isNative);
+        return repayBorrowFresh(msg.sender, msg.sender, repayAmount, isNative, false);
     }
 
     /**
@@ -559,7 +559,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
             return (fail(Error(error), FailureInfo.REPAY_BEHALF_ACCRUE_INTEREST_FAILED), 0);
         }
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
-        return repayBorrowFresh(msg.sender, borrower, repayAmount, isNative);
+        return repayBorrowFresh(msg.sender, borrower, repayAmount, isNative, false);
     }
 
     struct RepayBorrowLocalVars {
@@ -579,13 +579,15 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @param borrower the account with the debt being payed off
      * @param repayAmount the amount of undelrying tokens being returned
      * @param isNative The amount is in native or not
+     * @param isFromLiquidation The request is from liquidation or not
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual repayment amount.
      */
     function repayBorrowFresh(
         address payer,
         address borrower,
         uint256 repayAmount,
-        bool isNative
+        bool isNative,
+        bool isFromLiquidation
     ) internal returns (uint256, uint256) {
         /* Fail if repayBorrow not allowed */
         uint256 allowed = comptroller.repayBorrowAllowed(address(this), payer, borrower, repayAmount);
@@ -637,6 +639,17 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
          *   it returns the amount actually transferred, in case of a fee.
          */
         vars.actualRepayAmount = doTransferIn(payer, vars.repayAmount, isNative);
+
+        // Only check account liquidity if the request is from liquidation to save gas.
+        if (isFromLiquidation) {
+            // Right after `doTransferIn` and before updating the storage, check the borrower's account liquidity again.
+            // If a reentrant call to another asset is made during transferring AMP in, a second account liquidity check
+            // could help prevent excessive liquidation.
+            (uint256 err, , uint256 shortfall) = ComptrollerInterfaceExtension(address(comptroller))
+                .getAccountLiquidity(borrower);
+            require(err == 0, "failed to get account liquidity");
+            require(shortfall > 0, "borrower has no shortfall");
+        }
 
         /*
          * We calculate the new borrower and total borrow balances, failing on underflow:
@@ -755,7 +768,13 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
         LiquidateBorrowLocalVars memory vars;
 
         /* Fail if repayBorrow fails */
-        (vars.repayBorrowError, vars.actualRepayAmount) = repayBorrowFresh(liquidator, borrower, repayAmount, isNative);
+        (vars.repayBorrowError, vars.actualRepayAmount) = repayBorrowFresh(
+            liquidator,
+            borrower,
+            repayAmount,
+            isNative,
+            true
+        );
         if (vars.repayBorrowError != uint256(Error.NO_ERROR)) {
             return (fail(Error(vars.repayBorrowError), FailureInfo.LIQUIDATE_REPAY_BORROW_FRESH_FAILED), 0);
         }
