@@ -233,8 +233,8 @@ async function makeCToken(opts = {}) {
 
     case 'cevil':
       underlying = await makeToken({kind: "evil"});
-      cDelegatee = await deploy('CErc20DelegateHarness');
-      cDelegator = await deploy('CErc20Delegator',
+      cDelegatee = await deploy('CCollaterlaCapErc20CheckRepayDelegateHarness');
+      cDelegator = await deploy('CCollateralCapErc20Delegator',
         [
           underlying._address,
           comptroller._address,
@@ -248,7 +248,8 @@ async function makeCToken(opts = {}) {
           "0x0"
         ]
       );
-      cToken = await saddle.getContractAt('CErc20DelegateHarness', cDelegator._address); // XXXS at
+      cToken = await saddle.getContractAt('CCollaterlaCapErc20CheckRepayDelegateHarness', cDelegator._address); // XXXS at
+      version = 1; // ccollateralcap's version is 1
       break;
 
     case 'cerc20':
@@ -440,6 +441,14 @@ async function makeEvilAccount(opts = {}) {
   const crEvil = opts.crEvil || await makeCToken({kind: 'cevil'});
   const borrowAmount = opts.borrowAmount || etherMantissa(1);
   return await deploy('EvilAccount', [crEth._address, crEvil._address, borrowAmount]);
+}
+
+async function makeEvilAccount2(opts = {}) {
+  const crWeth = opts.crWeth || await makeCToken({kind: 'cerc20'});
+  const crEvil = opts.crEvil || await makeCToken({kind: 'cevil'});
+  const borrower = opts.borrower;
+  const repayAmount = opts.repayAmount || etherMantissa(1);
+  return await deploy('EvilAccount2', [crWeth._address, crEvil._address, borrower, repayAmount]);
 }
 
 async function preCSLP(underlying) {
@@ -660,6 +669,7 @@ module.exports = {
   makeCurveSwap,
   makeLiquidityMining,
   makeEvilAccount,
+  makeEvilAccount2,
   makeCTokenAdmin,
 
   balanceOf,
