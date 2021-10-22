@@ -2,7 +2,7 @@ const {
   etherUnsigned,
   etherMantissa,
   mergeInterface,
-  unlockedAccount
+  address,
 } = require('../Utils/Ethereum');
 
 const {
@@ -25,6 +25,7 @@ describe('Flashloan test', function () {
   beforeEach(async () => {
     admin = saddle.accounts[0];
     nonAdmin = saddle.accounts[1];
+    other = saddle.accounts[2];
     cToken = await makeCToken({kind: 'ccollateralcap', supportMarket: true});
     flashloanReceiver = await makeFlashloanReceiver()
     flashloanLender = await deploy('FlashloanLender', [cToken.comptroller._address, admin]);
@@ -40,7 +41,7 @@ describe('Flashloan test', function () {
 
     await send(cToken.underlying, 'harnessSetBalance', [flashloanReceiver._address, receiverBalance]);
   });
-  
+
   describe('test FlashLoanLender interface', ()=>{
     let unsupportedCToken;
     beforeEach(async () => {
@@ -60,25 +61,31 @@ describe('Flashloan test', function () {
       await expect(call(flashloanLender, 'flashFee', [unsupportedCToken.underlying._address, borrowAmount])).rejects.toRevert('revert cannot find cToken of this underlying in the mapping');
       expect(await call(flashloanLender, 'flashFee', [cToken.underlying._address, borrowAmount])).toEqualNumber(totalFee);
     });
-    it("test updateUnderlyingMapping", async () => 
+    it("test updateUnderlyingMapping", async () =>
     {
       const borrowAmount = 10_000;
       const totalFee = 3
       await send(flashloanLender, 'updateUnderlyingMapping', [[unsupportedCToken._address]]);
       expect(await call(flashloanLender, 'flashFee', [cToken.underlying._address, borrowAmount])).toEqualNumber(totalFee);
     });
-    it("test removeUnderlyingMapping", async () => 
+    it("test removeUnderlyingMapping", async () =>
     {
       const borrowAmount = 10_000;
       await send(flashloanLender, 'removeUnderlyingMapping', [[cToken._address]]);
       await expect(call(flashloanLender, 'flashFee', [cToken.underlying._address, borrowAmount])).rejects.toRevert('revert cannot find cToken of this underlying in the mapping');
     });
-    it("test onlyOwner", async () => 
+    it("test onlyOwner", async () =>
     {
       await expect(send(flashloanLender, 'updateUnderlyingMapping', [[unsupportedCToken._address]], {from:nonAdmin})).rejects.toRevert("revert not owner");
     });
-    
-
+    it("test transferOwnership", async () =>
+    {
+      await expect(send(flashloanLender, 'transferOwnership', [other], {from:nonAdmin})).rejects.toRevert("revert not owner");
+    });
+    it("test transferOwnership with zero address", async () =>
+    {
+      await expect(send(flashloanLender, 'transferOwnership', [address(0)], {from:admin})).rejects.toRevert("revert new owner cannot be zero address");
+    });
   })
 
   describe('internal cash equal underlying balance', () => {
