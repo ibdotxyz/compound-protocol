@@ -54,6 +54,8 @@ Test "Mint then Redeem Too Much"
     ListedCToken ZRX cZRX initialExchangeRate:1e9
     Prep Geoff 70e18 ZRX cZRX
     Mint Geoff 50e18 cZRX
+    Prep Jared 70e18 ZRX cZRX
+    Mint Jared 50e18 cZRX
     -- Check and hold static
     Invariant Static (CToken cZRX ExchangeRateStored)
     Invariant Remains (Erc20 cZRX TokenBalance Geoff) 500e8
@@ -198,6 +200,8 @@ Test "Mint, Enter, then Redeem Too Much (collateral factor: 0)"
     ListedCToken ZRX cZRX initialExchangeRate:1e9
     Prep Geoff 70e18 ZRX cZRX
     Mint Geoff 50e18 cZRX
+    Prep Jared 70e18 ZRX cZRX
+    Mint Jared 50e18 cZRX
     -- Check and hold static
     Invariant Static (CToken cZRX ExchangeRateStored)
     Invariant Remains (Erc20 cZRX TokenBalance Geoff) 500e8
@@ -224,4 +228,4 @@ Test "Mint, Enter, then Redeem Too Much (collateral factor: 0.1)"
     EnterMarkets Geoff cZRX
     AllowFailures
     Redeem Geoff 501e8 cZRX
-    Assert Failure COMPTROLLER_REJECTION REDEEM_COMPTROLLER_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert comptroller rejection"

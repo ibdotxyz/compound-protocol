@@ -49,7 +49,7 @@ Test "Cannot supply more even all underlying is borrowed"
     Prep Geoff Some ZRX cZRX
     AllowFailures
     Mint Geoff 1 cZRX
-    Assert Revert
+    Assert Revert "revert market supply cap reached"
     Assert Equal (Erc20 ZRX TokenBalance Geoff) (Exactly Some)
 
 Test "Setting supply cap restricted to admin"
@@ -116,10 +116,10 @@ Test "Infimint attack"
     From Geoff (Erc20 BAT Transfer (Address cBAT) 10000e18)
     AllowFailures
     Borrow Geoff 1000e18 cZRX
-    Assert Failure COMPTROLLER_REJECTION BORROW_COMPTROLLER_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert comptroller rejection"
     Successfully
     CToken cBAT Gulp
     AllowFailures
     Borrow Geoff 1000e18 cZRX
-    Assert Failure COMPTROLLER_REJECTION BORROW_COMPTROLLER_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert comptroller rejection"
     Assert Equal (CToken cBAT Reserves) 10010e18

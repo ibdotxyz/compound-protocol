@@ -4,7 +4,7 @@ Macro NewBorrow borrowAmount borrowRate
     NewComptroller price:1.0 -- TODO: This should really be a price for a specific asset
     NewCToken ZRX cZRX
     NewCToken WBTC cWBTC borrowRate 0.1 8 WBTC -- note: cannot use macros with named args right now
-    Give cWBTC 10e8 WBTC -- Faucet some WBTC to borrow
+    GiveCToken cWBTC 10e8 WBTC -- Faucet some WBTC to borrow
     Support cZRX collateralFactor:0.5
     Support cWBTC collateralFactor:0.5
     Prep Geoff Some ZRX cZRX
@@ -131,7 +131,7 @@ Test "Prohibit repay by comptroller rejection due to mock unlist"
     Expect Changes (Erc20 WBTC TokenBalance cWBTC) Zero
     Comptroller UnList cZRX -- Mock unlist ZRX
     RepayBorrow Geoff 2.5e8 cZRX
-    Assert Failure COMPTROLLER_REJECTION REPAY_BORROW_COMPTROLLER_REJECTION MARKET_NOT_LISTED
+    Assert Revert "revert comptroller rejection"
     -- Let's check the overall numbers
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 2.5e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 2.5e8

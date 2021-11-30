@@ -4,7 +4,7 @@ Macro NewBorrow borrowAmount borrowRate
     NewComptroller price:1.0 -- TODO: This should really be a price for a specific asset
     NewCToken ZRX cZRX
     NewCToken BAT cBAT borrowRate -- note: cannot use macros with named args right now
-    Give cBAT 10e18 BAT -- Faucet some bat to borrow
+    GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow
     Support cZRX collateralFactor:0.5
     Support cBAT collateralFactor:0.5
     Prep Geoff Some ZRX cZRX
@@ -131,7 +131,7 @@ Test "Prohibit repay by comptroller rejection due to mock unlist"
     Expect Changes (Erc20 BAT TokenBalance cBAT) Zero
     Comptroller UnList cZRX -- Mock unlist ZRX
     RepayBorrow Geoff 2.5e18 cZRX
-    Assert Failure COMPTROLLER_REJECTION REPAY_BORROW_COMPTROLLER_REJECTION MARKET_NOT_LISTED
+    Assert Revert "revert comptroller rejection"
     -- Let's check the overall numbers
     Assert Equal (CToken cBAT BorrowBalance Geoff) 2.5e18
     Assert Equal (CToken cBAT TotalBorrowsCurrent) 2.5e18
