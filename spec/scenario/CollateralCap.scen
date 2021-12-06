@@ -170,7 +170,7 @@ Test "Failed to redeem for comptroller rejected"
     -- 2e9 cZRX is used as collateral
     AllowFailures
     Redeem Geoff 49e9 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"
 
 Test "Unregister collateral successfully"
     CollateralCap
@@ -198,7 +198,7 @@ Test "Failed to unregister collateral for exit market failed"
     -- 2e9 cZRX is used as collateral
     AllowFailures
     ExitMarket Geoff cZRX
-    Assert Failure REJECTION EXIT_MARKET_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert insufficient liquidity"
 
 Test "Transfer cToken successfully"
     CollateralCap
@@ -237,7 +237,7 @@ Test "Failed to transfer cToken for comptroller rejected"
     -- 2e9 cZRX is used as collateral
     AllowFailures
     Transfer Geoff Torrey 49e9 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"
 
 Test "Seize collateral tokens"
     CollateralCap

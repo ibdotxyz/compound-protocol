@@ -52,7 +52,7 @@ Test "Simple cToken Transfer Not Allowed by Comptroller"
     -- Just transfer
     AllowFailures
     Transfer Geoff Torrey 60e18 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"
 
 Test "Simple cToken Transfer From"
     NewComptroller

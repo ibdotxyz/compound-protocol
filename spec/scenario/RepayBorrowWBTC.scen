@@ -131,7 +131,7 @@ Test "Prohibit repay by comptroller rejection due to mock unlist"
     Expect Changes (Erc20 WBTC TokenBalance cWBTC) Zero
     Comptroller UnList cZRX -- Mock unlist ZRX
     RepayBorrow Geoff 2.5e8 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert market not listed"
     -- Let's check the overall numbers
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 2.5e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 2.5e8

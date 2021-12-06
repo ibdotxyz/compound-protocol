@@ -228,4 +228,4 @@ Test "Mint, Enter, then Redeem Too Much (collateral factor: 0.1)"
     EnterMarkets Geoff cZRX
     AllowFailures
     Redeem Geoff 501e8 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"

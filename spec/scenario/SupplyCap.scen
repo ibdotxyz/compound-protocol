@@ -116,10 +116,10 @@ Test "Infimint attack"
     From Geoff (Erc20 BAT Transfer (Address cBAT) 10000e18)
     AllowFailures
     Borrow Geoff 1000e18 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"
     Successfully
     CToken cBAT Gulp
     AllowFailures
     Borrow Geoff 1000e18 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"
     Assert Equal (CToken cBAT Reserves) 10010e18

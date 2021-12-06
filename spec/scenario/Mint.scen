@@ -87,7 +87,7 @@ Test "Denied by comptroller because unlisted"
     Invariant Static (Erc20 ZRX TotalSupply)
     AllowFailures
     Mint Geoff 2e18 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert market not listed"
 
 Test "mint reverts if mint is paused"
     NewComptroller

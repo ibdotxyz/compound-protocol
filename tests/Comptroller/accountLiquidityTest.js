@@ -18,8 +18,7 @@ describe('Comptroller', () => {
       const cToken = await makeCToken({supportMarket: true});
       await enterMarkets([cToken], user);
       await quickMint(cToken, user, amount);
-      let result = await call(cToken.comptroller, 'getAccountLiquidity', [user]);
-      expect(result).toHaveTrollError('PRICE_ERROR');
+      await expect(call(cToken.comptroller, 'getAccountLiquidity', [user])).rejects.toRevert('revert price error');;
     });
 
     it("allows a borrow up to collateralFactor, but not more", async () => {
