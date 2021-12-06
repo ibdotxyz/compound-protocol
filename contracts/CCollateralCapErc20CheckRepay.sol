@@ -689,9 +689,8 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
             collateralTokens = vars.redeemTokens - bufferTokens;
         }
 
-        if (collateralTokens > 0) {
-            require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "comptroller rejection");
-        }
+        /* redeemAllowed might check more than user's liquidity. */
+        require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "comptroller rejection");
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "market not fresh");
