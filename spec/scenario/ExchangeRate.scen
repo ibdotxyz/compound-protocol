@@ -35,7 +35,7 @@ Test "ZRX: Exch. Rate:2e9, Cash(51e18) + Borrows(2.0e18) - Reserves(0.5e18) / To
     Assert Equal (Erc20 cZRX TotalSupply) (Exactly 2.5e10)
     Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 2.5e10)
     -- Set cash
-    Erc20 ZRX Faucet cZRX 1.0e18
+    GiveCToken cZRX 1.0e18 ZRX -- Faucet some ZRX
     Assert Equal (Erc20 ZRX TokenBalance cZRX) (Exactly 51.0e18)
     -- Mock total borrows
     CToken cZRX Mock totalBorrows 2.0e18
@@ -60,7 +60,7 @@ Test "USDC: Exch. Rate:2e-3, Cash(51e18) + Borrows(2.0e18) - Reserves(0.5e18) / 
     Assert Equal (Erc20 cUSDC TotalSupply) (Exactly 2.5e10)
     Assert Equal (Erc20 cUSDC TokenBalance Geoff) (Exactly 2.5e10)
     -- Set cash
-    Erc20 USDC Faucet cUSDC 2.0e6
+    GiveCToken cUSDC 2.0e6 USDC -- Faucet some USDC
     Assert Equal (Erc20 USDC TokenBalance cUSDC) (Exactly 52.0e6)
     -- Mock total borrows
     CToken cUSDC Mock totalBorrows 5.0e6

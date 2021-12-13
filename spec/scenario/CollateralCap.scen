@@ -6,7 +6,7 @@ Macro CollateralCap
 Macro CollateralCapWithUpgrade
     NewComptroller
     -- FIXME: We use `CCollateralCapErc20DelegatorScenario` here as a workaround, since collateral token related is not defined in `CErc20Delegator`.
-    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CCollateralCapErc20DelegatorScenario
+    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CCollateralCapErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     SetCollateralFactor cZRX collateralFactor:0.5
 
 Test "Mint cZRX without entering market"
@@ -160,7 +160,7 @@ Test "Redeem with consuming some collateral tokens"
 Test "Failed to redeem for comptroller rejected"
     CollateralCap
     ListedCToken BAT cBAT initialExchangeRate:1e9
-    Give cBAT 10e18 BAT -- Faucet some bat to borrow
+    GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
@@ -170,7 +170,7 @@ Test "Failed to redeem for comptroller rejected"
     -- 2e9 cZRX is used as collateral
     AllowFailures
     Redeem Geoff 49e9 cZRX
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert insufficient liquidity"
 
 Test "Unregister collateral successfully"
     CollateralCap
@@ -188,7 +188,7 @@ Test "Unregister collateral successfully"
 Test "Failed to unregister collateral for exit market failed"
     CollateralCap
     ListedCToken BAT cBAT initialExchangeRate:1e9
-    Give cBAT 10e18 BAT -- Faucet some bat to borrow
+    GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
@@ -198,7 +198,7 @@ Test "Failed to unregister collateral for exit market failed"
     -- 2e9 cZRX is used as collateral
     AllowFailures
     ExitMarket Geoff cZRX
-    Assert Failure REJECTION EXIT_MARKET_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert insufficient liquidity"
 
 Test "Transfer cToken successfully"
     CollateralCap
@@ -227,7 +227,7 @@ Test "Transfer cToken successfully"
 Test "Failed to transfer cToken for comptroller rejected"
     CollateralCap
     ListedCToken BAT cBAT initialExchangeRate:1e9
-    Give cBAT 10e18 BAT -- Faucet some bat to borrow
+    GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
@@ -237,7 +237,7 @@ Test "Failed to transfer cToken for comptroller rejected"
     -- 2e9 cZRX is used as collateral
     AllowFailures
     Transfer Geoff Torrey 49e9 cZRX
-    Assert Failure COMPTROLLER_REJECTION TRANSFER_COMPTROLLER_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert insufficient liquidity"
 
 Test "Seize collateral tokens"
     CollateralCap
@@ -385,7 +385,7 @@ Test "Borrow with cToken upgrade"
     CollateralCapWithUpgrade
     ListedCToken BAT cBAT initialExchangeRate:1e9
     SetCollateralFactor cBAT collateralFactor:0.5
-    Give cBAT 10e18 BAT -- Faucet some bat to borrow
+    GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
@@ -422,7 +422,7 @@ Test "Repay with cToken upgrade"
     CollateralCapWithUpgrade
     ListedCToken BAT cBAT initialExchangeRate:1e9
     SetCollateralFactor cBAT collateralFactor:0.5
-    Give cBAT 10e18 BAT -- Faucet some bat to borrow
+    GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
