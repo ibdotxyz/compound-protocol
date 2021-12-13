@@ -440,15 +440,10 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
          * Since bufferTokens are not collateralized and can be transferred freely, we only check with comptroller
          * whether collateralized tokens can be transferred.
          */
-        uint256 allowed = comptroller.transferAllowed(address(this), src, dst, collateralTokens);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.TRANSFER_COMPTROLLER_REJECTION, allowed);
-        }
+        require(comptroller.transferAllowed(address(this), src, dst, collateralTokens) == 0, "comptroller rejection");
 
         /* Do not allow self-transfers */
-        if (src == dst) {
-            return fail(Error.BAD_INPUT, FailureInfo.TRANSFER_NOT_ALLOWED);
-        }
+        require(src != dst, "bad input");
 
         /* Get the allowance, infinite for the account owner */
         uint256 startingAllowance = 0;
@@ -570,10 +565,7 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
         initializeAccountCollateralTokens(minter);
 
         /* Fail if mint not allowed */
-        uint256 allowed = comptroller.mintAllowed(address(this), minter, mintAmount);
-        if (allowed != 0) {
-            return (failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.MINT_COMPTROLLER_REJECTION, allowed), 0);
-        }
+        require(comptroller.mintAllowed(address(this), minter, mintAmount) == 0, "comptroller rejection");
 
         /*
          * Return if mintAmount is zero.
@@ -584,9 +576,7 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
         }
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return (fail(Error.MARKET_NOT_FRESH, FailureInfo.MINT_FRESHNESS_CHECK), 0);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         MintLocalVars memory vars;
 
@@ -699,19 +689,14 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
             collateralTokens = vars.redeemTokens - bufferTokens;
         }
 
-        if (collateralTokens > 0) {
-            require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "comptroller rejection");
-        }
+        /* redeemAllowed might check more than user's liquidity. */
+        require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "comptroller rejection");
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return fail(Error.MARKET_NOT_FRESH, FailureInfo.REDEEM_FRESHNESS_CHECK);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
-        /* Fail gracefully if protocol has insufficient cash */
-        if (getCashPrior() < vars.redeemAmount) {
-            return fail(Error.TOKEN_INSUFFICIENT_CASH, FailureInfo.REDEEM_TRANSFER_OUT_NOT_POSSIBLE);
-        }
+        /* Reverts if protocol has insufficient cash */
+        require(getCashPrior() >= vars.redeemAmount, "token insufficient cash");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -769,10 +754,10 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
         initializeAccountCollateralTokens(borrower);
 
         /* Fail if seize not allowed */
-        uint256 allowed = comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.LIQUIDATE_SEIZE_COMPTROLLER_REJECTION, allowed);
-        }
+        require(
+            comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens) == 0,
+            "comptroller rejection"
+        );
 
         /*
          * Return if seizeTokens is zero.
@@ -783,9 +768,7 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
         }
 
         /* Fail if borrower = liquidator */
-        if (borrower == liquidator) {
-            return fail(Error.INVALID_ACCOUNT_PAIR, FailureInfo.LIQUIDATE_SEIZE_LIQUIDATOR_IS_BORROWER);
-        }
+        require(borrower != liquidator, "invalid account pair");
 
         /*
          * We calculate the new borrower and liquidator token balances and token collateral balances, failing on underflow/overflow:

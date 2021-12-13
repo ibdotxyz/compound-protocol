@@ -126,10 +126,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function addToMarketInternal(CToken cToken, address borrower) internal returns (Error) {
         Market storage marketToJoin = markets[address(cToken)];
 
-        if (!marketToJoin.isListed) {
-            // market is not listed, cannot join
-            return Error.MARKET_NOT_LISTED;
-        }
+        require(marketToJoin.isListed, "market not listed");
 
         if (marketToJoin.version == Version.COLLATERALCAP) {
             // register collateral for the borrower if the token is CollateralCap version.
@@ -168,15 +165,10 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(oErr == 0, "exitMarket: getAccountSnapshot failed"); // semi-opaque error code
 
         /* Fail if the sender has a borrow balance */
-        if (amountOwed != 0) {
-            return fail(Error.NONZERO_BORROW_BALANCE, FailureInfo.EXIT_MARKET_BALANCE_OWED);
-        }
+        require(amountOwed == 0, "nonzero borrow balance");
 
         /* Fail if the sender is not permitted to redeem all of their tokens */
-        uint256 allowed = redeemAllowedInternal(cTokenAddress, msg.sender, tokensHeld);
-        if (allowed != 0) {
-            return failOpaque(Error.REJECTION, FailureInfo.EXIT_MARKET_REJECTION, allowed);
-        }
+        require(redeemAllowedInternal(cTokenAddress, msg.sender, tokensHeld) == 0, "failed to exit market");
 
         Market storage marketToExit = markets[cTokenAddress];
 
@@ -246,9 +238,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(!mintGuardianPaused[cToken], "mint is paused");
         require(!isCreditAccount(minter, cToken), "credit account cannot mint");
 
-        if (!isMarketListed(cToken)) {
-            return uint256(Error.MARKET_NOT_LISTED);
-        }
+        require(isMarketListed(cToken), "market not listed");
 
         uint256 supplyCap = supplyCaps[cToken];
         // Supply cap of 0 corresponds to unlimited supplying
@@ -312,9 +302,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
-        if (!isMarketListed(cToken)) {
-            return uint256(Error.MARKET_NOT_LISTED);
-        }
+        require(isMarketListed(cToken), "market not listed");
 
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
         if (!markets[cToken].accountMembership[redeemer]) {
@@ -328,12 +316,8 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             redeemTokens,
             0
         );
-        if (err != Error.NO_ERROR) {
-            return uint256(err);
-        }
-        if (shortfall > 0) {
-            return uint256(Error.INSUFFICIENT_LIQUIDITY);
-        }
+        require(err == Error.NO_ERROR, "failed to get account liquidity");
+        require(shortfall == 0, "insufficient liquidity");
 
         return uint256(Error.NO_ERROR);
     }
@@ -376,27 +360,20 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!borrowGuardianPaused[cToken], "borrow is paused");
 
-        if (!isMarketListed(cToken)) {
-            return uint256(Error.MARKET_NOT_LISTED);
-        }
+        require(isMarketListed(cToken), "market not listed");
 
         if (!markets[cToken].accountMembership[borrower]) {
             // only cTokens may call borrowAllowed if borrower not in market
             require(msg.sender == cToken, "sender must be cToken");
 
             // attempt to add borrower to the market
-            Error err = addToMarketInternal(CToken(cToken), borrower);
-            if (err != Error.NO_ERROR) {
-                return uint256(err);
-            }
+            require(addToMarketInternal(CToken(cToken), borrower) == Error.NO_ERROR, "failed to add market");
 
             // it should be impossible to break the important invariant
             assert(markets[cToken].accountMembership[borrower]);
         }
 
-        if (oracle.getUnderlyingPrice(CToken(cToken)) == 0) {
-            return uint256(Error.PRICE_ERROR);
-        }
+        require(oracle.getUnderlyingPrice(CToken(cToken)) != 0, "price error");
 
         uint256 borrowCap = borrowCaps[cToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
@@ -412,12 +389,8 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             0,
             borrowAmount
         );
-        if (err != Error.NO_ERROR) {
-            return uint256(err);
-        }
-        if (shortfall > 0) {
-            return uint256(Error.INSUFFICIENT_LIQUIDITY);
-        }
+        require(err == Error.NO_ERROR, "failed to get account liquidity");
+        require(shortfall == 0, "insufficient liquidity");
 
         return uint256(Error.NO_ERROR);
     }
@@ -461,9 +434,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Shh - currently unused
         repayAmount;
 
-        if (!isMarketListed(cToken)) {
-            return uint256(Error.MARKET_NOT_LISTED);
-        }
+        require(isMarketListed(cToken), "market not listed");
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
@@ -519,18 +490,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Shh - currently unused
         liquidator;
 
-        if (!isMarketListed(cTokenBorrowed) || !isMarketListed(cTokenCollateral)) {
-            return uint256(Error.MARKET_NOT_LISTED);
-        }
+        require(isMarketListed(cTokenBorrowed) && isMarketListed(cTokenCollateral), "market not listed");
 
         /* The borrower must have shortfall in order to be liquidatable */
         (Error err, , uint256 shortfall) = getAccountLiquidityInternal(borrower);
-        if (err != Error.NO_ERROR) {
-            return uint256(err);
-        }
-        if (shortfall == 0) {
-            return uint256(Error.INSUFFICIENT_SHORTFALL);
-        }
+        require(err == Error.NO_ERROR, "failed to get account liquidity");
+        require(shortfall > 0, "insufficient shortfall");
 
         /* The liquidator may not repay more than what is allowed by the closeFactor */
         uint256 borrowBalance = CToken(cTokenBorrowed).borrowBalanceStored(borrower);
@@ -595,13 +560,11 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         liquidator;
         seizeTokens;
 
-        if (!isMarketListed(cTokenCollateral) || !isMarketListed(cTokenBorrowed)) {
-            return uint256(Error.MARKET_NOT_LISTED);
-        }
-
-        if (CToken(cTokenCollateral).comptroller() != CToken(cTokenBorrowed).comptroller()) {
-            return uint256(Error.COMPTROLLER_MISMATCH);
-        }
+        require(isMarketListed(cTokenBorrowed) && isMarketListed(cTokenCollateral), "market not listed");
+        require(
+            CToken(cTokenCollateral).comptroller() == CToken(cTokenBorrowed).comptroller(),
+            "comptroller mismatched"
+        );
 
         return uint256(Error.NO_ERROR);
     }
@@ -865,10 +828,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(
                 account
             );
-            if (oErr != 0) {
-                // semi-opaque error code, we assume NO_ERROR == 0 is invariant between upgrades
-                return (Error.SNAPSHOT_ERROR, 0, 0);
-            }
+            require(oErr == 0, "snapshot error");
 
             // Once a market's credit limit is set, the account's collateral won't be considered anymore.
             uint256 creditLimit = creditLimits[account][address(asset)];
@@ -892,9 +852,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
                 // Get the normalized price of the asset
                 vars.oraclePriceMantissa = oracle.getUnderlyingPrice(asset);
-                if (vars.oraclePriceMantissa == 0) {
-                    return (Error.PRICE_ERROR, 0, 0);
-                }
+                require(vars.oraclePriceMantissa > 0, "price error");
                 vars.oraclePrice = Exp({mantissa: vars.oraclePriceMantissa});
 
                 // Pre-compute a conversion factor from tokens -> ether (normalized price value)
@@ -959,9 +917,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         /* Read oracle prices for borrowed and collateral markets */
         uint256 priceBorrowedMantissa = oracle.getUnderlyingPrice(CToken(cTokenBorrowed));
         uint256 priceCollateralMantissa = oracle.getUnderlyingPrice(CToken(cTokenCollateral));
-        if (priceBorrowedMantissa == 0 || priceCollateralMantissa == 0) {
-            return (uint256(Error.PRICE_ERROR), 0);
-        }
+        require(priceBorrowedMantissa > 0 && priceCollateralMantissa > 0, "price error");
 
         /*
          * Get the exchange rate and calculate the number of collateral tokens to seize:

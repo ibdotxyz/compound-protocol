@@ -386,11 +386,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual mint amount.
      */
     function mintInternal(uint256 mintAmount, bool isNative) internal nonReentrant returns (uint256, uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted borrow failed
-            return (fail(Error(error), FailureInfo.MINT_ACCRUE_INTEREST_FAILED), 0);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
         // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
         return mintFresh(msg.sender, mintAmount, isNative);
     }
@@ -403,11 +399,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeemInternal(uint256 redeemTokens, bool isNative) internal nonReentrant returns (uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted redeem failed
-            return fail(Error(error), FailureInfo.REDEEM_ACCRUE_INTEREST_FAILED);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         return redeemFresh(msg.sender, redeemTokens, 0, isNative);
     }
@@ -420,11 +412,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeemUnderlyingInternal(uint256 redeemAmount, bool isNative) internal nonReentrant returns (uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted redeem failed
-            return fail(Error(error), FailureInfo.REDEEM_ACCRUE_INTEREST_FAILED);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         return redeemFresh(msg.sender, 0, redeemAmount, isNative);
     }
@@ -436,11 +424,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function borrowInternal(uint256 borrowAmount, bool isNative) internal nonReentrant returns (uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted borrow failed
-            return fail(Error(error), FailureInfo.BORROW_ACCRUE_INTEREST_FAILED);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
         // borrowFresh emits borrow-specific logs on errors, so we don't need to
         return borrowFresh(msg.sender, borrowAmount, isNative);
     }
@@ -464,20 +448,13 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         bool isNative
     ) internal returns (uint256) {
         /* Fail if borrow not allowed */
-        uint256 allowed = comptroller.borrowAllowed(address(this), borrower, borrowAmount);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.BORROW_COMPTROLLER_REJECTION, allowed);
-        }
+        require(comptroller.borrowAllowed(address(this), borrower, borrowAmount) == 0, "comptroller rejection");
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return fail(Error.MARKET_NOT_FRESH, FailureInfo.BORROW_FRESHNESS_CHECK);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
-        /* Fail gracefully if protocol has insufficient underlying cash */
-        if (getCashPrior() < borrowAmount) {
-            return fail(Error.TOKEN_INSUFFICIENT_CASH, FailureInfo.BORROW_CASH_NOT_AVAILABLE);
-        }
+        /* Reverts if protocol has insufficient cash */
+        require(getCashPrior() >= borrowAmount, "token insufficient cash");
 
         BorrowLocalVars memory vars;
 
@@ -523,11 +500,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual repayment amount.
      */
     function repayBorrowInternal(uint256 repayAmount, bool isNative) internal nonReentrant returns (uint256, uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted borrow failed
-            return (fail(Error(error), FailureInfo.REPAY_BORROW_ACCRUE_INTEREST_FAILED), 0);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         return repayBorrowFresh(msg.sender, msg.sender, repayAmount, isNative);
     }
@@ -544,11 +517,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         uint256 repayAmount,
         bool isNative
     ) internal nonReentrant returns (uint256, uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted borrow failed
-            return (fail(Error(error), FailureInfo.REPAY_BEHALF_ACCRUE_INTEREST_FAILED), 0);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         return repayBorrowFresh(msg.sender, borrower, repayAmount, isNative);
     }
@@ -579,18 +548,13 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         bool isNative
     ) internal returns (uint256, uint256) {
         /* Fail if repayBorrow not allowed */
-        uint256 allowed = comptroller.repayBorrowAllowed(address(this), payer, borrower, repayAmount);
-        if (allowed != 0) {
-            return (
-                failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.REPAY_BORROW_COMPTROLLER_REJECTION, allowed),
-                0
-            );
-        }
+        require(
+            comptroller.repayBorrowAllowed(address(this), payer, borrower, repayAmount) == 0,
+            "comptroller rejection"
+        );
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return (fail(Error.MARKET_NOT_FRESH, FailureInfo.REPAY_BORROW_FRESHNESS_CHECK), 0);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         RepayBorrowLocalVars memory vars;
 
@@ -657,17 +621,8 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         CTokenInterface cTokenCollateral,
         bool isNative
     ) internal nonReentrant returns (uint256, uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted liquidation failed
-            return (fail(Error(error), FailureInfo.LIQUIDATE_ACCRUE_BORROW_INTEREST_FAILED), 0);
-        }
-
-        error = cTokenCollateral.accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted liquidation failed
-            return (fail(Error(error), FailureInfo.LIQUIDATE_ACCRUE_COLLATERAL_INTEREST_FAILED), 0);
-        }
+        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        require(cTokenCollateral.accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
 
         // liquidateBorrowFresh emits borrow-specific logs on errors, so we don't need to
         return liquidateBorrowFresh(msg.sender, borrower, repayAmount, cTokenCollateral, isNative);
@@ -698,49 +653,34 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         bool isNative
     ) internal returns (uint256, uint256) {
         /* Fail if liquidate not allowed */
-        uint256 allowed = comptroller.liquidateBorrowAllowed(
-            address(this),
-            address(cTokenCollateral),
-            liquidator,
-            borrower,
-            repayAmount
+        require(
+            comptroller.liquidateBorrowAllowed(
+                address(this),
+                address(cTokenCollateral),
+                liquidator,
+                borrower,
+                repayAmount
+            ) == 0,
+            "comptroller rejection"
         );
-        if (allowed != 0) {
-            return (failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.LIQUIDATE_COMPTROLLER_REJECTION, allowed), 0);
-        }
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return (fail(Error.MARKET_NOT_FRESH, FailureInfo.LIQUIDATE_FRESHNESS_CHECK), 0);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         /* Verify cTokenCollateral market's block number equals current block number */
-        if (cTokenCollateral.accrualBlockNumber() != getBlockNumber()) {
-            return (fail(Error.MARKET_NOT_FRESH, FailureInfo.LIQUIDATE_COLLATERAL_FRESHNESS_CHECK), 0);
-        }
+        require(cTokenCollateral.accrualBlockNumber() == getBlockNumber(), "market not fresh");
 
         /* Fail if borrower = liquidator */
-        if (borrower == liquidator) {
-            return (fail(Error.INVALID_ACCOUNT_PAIR, FailureInfo.LIQUIDATE_LIQUIDATOR_IS_BORROWER), 0);
-        }
+        require(borrower != liquidator, "invalid account pair");
 
-        /* Fail if repayAmount = 0 */
-        if (repayAmount == 0) {
-            return (fail(Error.INVALID_CLOSE_AMOUNT_REQUESTED, FailureInfo.LIQUIDATE_CLOSE_AMOUNT_IS_ZERO), 0);
-        }
-
-        /* Fail if repayAmount = -1 */
-        if (repayAmount == uint256(-1)) {
-            return (fail(Error.INVALID_CLOSE_AMOUNT_REQUESTED, FailureInfo.LIQUIDATE_CLOSE_AMOUNT_IS_UINT_MAX), 0);
-        }
+        /* Fail if repayAmount = 0 or repayAmount = -1 */
+        require(repayAmount > 0 && repayAmount != uint256(-1), "invalid close amount requested");
 
         LiquidateBorrowLocalVars memory vars;
 
         /* Fail if repayBorrow fails */
         (vars.repayBorrowError, vars.actualRepayAmount) = repayBorrowFresh(liquidator, borrower, repayAmount, isNative);
-        if (vars.repayBorrowError != uint256(Error.NO_ERROR)) {
-            return (fail(Error(vars.repayBorrowError), FailureInfo.LIQUIDATE_REPAY_BORROW_FRESH_FAILED), 0);
-        }
+        require(vars.repayBorrowError == uint256(Error.NO_ERROR), "repay borrow failed");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
