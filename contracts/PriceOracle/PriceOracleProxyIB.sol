@@ -4,10 +4,8 @@ pragma experimental ABIEncoderV2;
 import "./Denominations.sol";
 import "./PriceOracle.sol";
 import "./interfaces/BandReference.sol";
-import "./interfaces/CurveTokenInterface.sol";
 import "./interfaces/FeedRegistryInterface.sol";
 import "./interfaces/V1PriceOracleInterface.sol";
-import "./interfaces/YVaultTokenInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
@@ -42,12 +40,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /// @notice Band Reference
     mapping(address => ReferenceInfo) public references;
 
-    /// @notice Mapping of token to y-vault token
-    mapping(address => address) public yVaults;
-
-    /// @notice Mapping of token to curve swap
-    mapping(address => address) public curveSwap;
-
     /// @notice The v1 price oracle, maintain by CREAM
     V1PriceOracleInterface public v1PriceOracle;
 
@@ -59,8 +51,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
 
     /// @notice Quote symbol we used for BAND reference contract
     string public constant QUOTE_SYMBOL = "USD";
-
-    address public constant y3CRVAddress = 0x9cA85572E6A3EbF24dEDd195623F188735A5179f;
 
     /**
      * @param admin_ The address of admin to set aggregators
@@ -78,9 +68,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
         reg = FeedRegistryInterface(registry_);
         ref = StdReferenceInterface(reference_);
-
-        yVaults[y3CRVAddress] = 0x9cA85572E6A3EbF24dEDd195623F188735A5179f; // y-vault 3Crv
-        curveSwap[y3CRVAddress] = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7; // curve 3 pool
     }
 
     /**
@@ -90,13 +77,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
      */
     function getUnderlyingPrice(CToken cToken) public view returns (uint256) {
         address underlying = CErc20(address(cToken)).underlying();
-
-        // Handle y3Crv.
-        if (underlying == y3CRVAddress) {
-            uint256 yVaultPrice = YVaultV1Interface(yVaults[y3CRVAddress]).getPricePerFullShare();
-            uint256 virtualPrice = CurveSwapInterface(curveSwap[y3CRVAddress]).get_virtual_price();
-            return mul_(yVaultPrice, Exp({mantissa: virtualPrice}));
-        }
 
         // Get price from ChainLink.
         AggregatorInfo storage aggregatorInfo = aggregators[underlying];
