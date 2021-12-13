@@ -37,14 +37,14 @@ describe('Comptroller', () => {
   describe('liquidateCalculateAmountSeize', () => {
     it("fails if either asset price is 0", async () => {
       await setOraclePrice(cTokenBorrowed, 0);
-      expect(
-        await calculateSeizeTokens(comptroller, cTokenBorrowed, cTokenCollateral, repayAmount)
-      ).toHaveTrollErrorTuple(['PRICE_ERROR', 0]);
+      await expect(
+        calculateSeizeTokens(comptroller, cTokenBorrowed, cTokenCollateral, repayAmount)
+      ).rejects.toRevert('revert price error');
 
       await setOraclePrice(cTokenCollateral, 0);
-      expect(
-        await calculateSeizeTokens(comptroller, cTokenBorrowed, cTokenCollateral, repayAmount)
-      ).toHaveTrollErrorTuple(['PRICE_ERROR', 0]);
+      await expect(
+        calculateSeizeTokens(comptroller, cTokenBorrowed, cTokenCollateral, repayAmount)
+      ).rejects.toRevert('revert price error');
     });
 
     it("fails if the repayAmount causes overflow ", async () => {

@@ -225,7 +225,7 @@ describe('Comptroller', () => {
 
     it("fails for invalid market", async () => {
       const cToken = await makeCToken();
-      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit])).rejects.toRevert("revert invalid market");
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit])).rejects.toRevert("revert market not listed");
     });
 
     it("succeeds and sets credit limit", async () => {

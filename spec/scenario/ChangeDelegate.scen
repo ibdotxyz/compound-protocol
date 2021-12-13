@@ -2,8 +2,8 @@
 
 Test "Change the delegate"
     NewComptroller
-    NewCToken DEL cDEL
-    Support cDEL collateralFactor:0.5
+    NewCToken DEL cDEL delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
+    Support cDEL collateralFactor:0.5 version:0
     Prep Jared Some DEL cDEL
     Mint Jared 100e18 cDEL
     CTokenDelegate Deploy CErc20Delegate cErc20Delegate2
@@ -12,8 +12,8 @@ Test "Change the delegate"
 
 Test "Update the delegate from CErc20 to CCapableErc20"
     NewComptroller
-    NewCToken ZRX cZRX
-    Support cZRX collateralFactor:0.5
+    NewCToken ZRX cZRX delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
+    Support cZRX collateralFactor:0.5 version:0
     Prep Jared Some ZRX cZRX
     Mint Jared 100e18 cZRX
     Give cZRX 100e18 ZRX -- Transfer 100e18 ZRX to cZRX
@@ -29,8 +29,8 @@ Test "Update the delegate from CErc20 to CCapableErc20"
 
 Test "Upgrade the delegate from CErc20 to CCollateralCapErc20"
     NewComptroller
-    NewCToken ZRX cZRX
-    Support cZRX collateralFactor:0.5
+    NewCToken ZRX cZRX delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario
+    Support cZRX collateralFactor:0.5 version:0
     Assert Equal (Comptroller CheckCTokenVersion cZRX) (Exactly 0)
     -- New Deleagte
     CTokenDelegate Deploy CCollateralCapErc20DelegateScenario myCollateralCapDelegate
@@ -39,8 +39,8 @@ Test "Upgrade the delegate from CErc20 to CCollateralCapErc20"
 
 Test "Upgrade the delegate from CCapableErc20 to CCollateralCapErc20"
     NewComptroller
-    NewCToken ZRX cZRX cTokenType:CCapableErc20Delegate
-    Support cZRX collateralFactor:0.5
+    NewCToken ZRX cZRX delegatorType:CErc20DelegatorScenario cTokenType:CCapableErc20Delegate version:0
+    Support cZRX collateralFactor:0.5 version:0
     Assert Equal (Comptroller CheckCTokenVersion cZRX) (Exactly 0)
     -- New Deleagte
     CTokenDelegate Deploy CCollateralCapErc20DelegateScenario myCollateralCapDelegate
