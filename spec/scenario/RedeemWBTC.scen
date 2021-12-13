@@ -54,6 +54,8 @@ Test "Mint WBTC then Redeem Too Much"
     ListedCToken WBTC cWBTC initialExchangeRate:0.1 tokenType:WBTC
     Prep Geoff 70e8 WBTC cWBTC
     Mint Geoff 50e8 cWBTC
+    Prep Jared 70e8 WBTC cWBTC
+    Mint Jared 50e8 cWBTC
     -- Check and hold static
     Invariant Static (CToken cWBTC ExchangeRateStored)
     Invariant Remains (Erc20 cWBTC TokenBalance Geoff) 500e8
@@ -197,6 +199,8 @@ Test "Mint WBTC, Enter, then Redeem Too Much (collateral factor: 0)"
     ListedCToken WBTC cWBTC initialExchangeRate:0.1 tokenType:WBTC
     Prep Geoff 70e8 WBTC cWBTC
     Mint Geoff 50e8 cWBTC
+    Prep Jared 70e8 WBTC cWBTC
+    Mint Jared 50e8 cWBTC
     -- Check and hold static
     Invariant Static (CToken cWBTC ExchangeRateStored)
     Invariant Remains (Erc20 cWBTC TokenBalance Geoff) 500e8
@@ -223,4 +227,4 @@ Test "Mint WBTC, Enter, then Redeem Too Much (collateral factor: 0.1)"
     EnterMarkets Geoff cWBTC
     AllowFailures
     Redeem Geoff 501e8 cWBTC
-    Assert Failure COMPTROLLER_REJECTION REDEEM_COMPTROLLER_REJECTION INSUFFICIENT_LIQUIDITY
+    Assert Revert "revert insufficient liquidity"

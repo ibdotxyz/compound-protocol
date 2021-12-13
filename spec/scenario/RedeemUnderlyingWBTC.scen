@@ -37,6 +37,8 @@ Test "Mint then Redeem Too Much"
     ListedCToken WBTC cWBTC initialExchangeRate:0.1 tokenType:WBTC
     Prep Geoff 70e8 WBTC cWBTC
     Mint Geoff 50e8 cWBTC
+    Prep Jared 70e8 WBTC cWBTC
+    Mint Jared 50e8 cWBTC
     -- Check and hold static
     Invariant Static (CToken cWBTC ExchangeRateStored)
     Invariant Remains (Erc20 cWBTC TokenBalance Geoff) 500e8

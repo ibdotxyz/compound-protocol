@@ -150,12 +150,12 @@ describe('Comptroller', () => {
           await send(comptroller, `_set${method}Paused`, [cToken._address, true], {from: pauseGuardian});
           switch (method) {
           case "Mint":
-            expect(await call(comptroller, 'mintAllowed', [address(1), address(2), 1])).toHaveTrollError('MARKET_NOT_LISTED');
+            await expect(call(comptroller, 'mintAllowed', [address(1), address(2), 1])).rejects.toRevert('revert market not listed');
             await expect(send(comptroller, 'mintAllowed', [cToken._address, address(2), 1])).rejects.toRevert(`revert ${method.toLowerCase()} is paused`);
             break;
 
           case "Borrow":
-            expect(await call(comptroller, 'borrowAllowed', [address(1), address(2), 1])).toHaveTrollError('MARKET_NOT_LISTED');
+            await expect(call(comptroller, 'borrowAllowed', [address(1), address(2), 1])).rejects.toRevert('revert market not listed');
             await expect(send(comptroller, 'borrowAllowed', [cToken._address, address(2), 1])).rejects.toRevert(`revert ${method.toLowerCase()} is paused`);
             break;
 

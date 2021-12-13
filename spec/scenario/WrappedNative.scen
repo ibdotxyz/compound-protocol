@@ -1,6 +1,6 @@
 Macro WrappedNative
     NewComptroller price:1.0
-    ListedCToken WETH cWETH initialExchangeRate:0.005e9 decimals:18 tokenType:WETH delegatorType:CWrappedNativeDelegatorScenario cTokenType:CWrappedNativeDelegateScenario
+    ListedCToken WETH cWETH initialExchangeRate:0.005e9 decimals:18 tokenType:WETH delegatorType:CWrappedNativeDelegatorScenario cTokenType:CWrappedNativeDelegateScenario version:2
     SetCollateralFactor cWETH collateralFactor:0.5
     ListedCToken ZRX cZRX
     SetCollateralFactor cZRX collateralFactor:0.5

@@ -90,7 +90,7 @@ describe('CWrappedNative', function () {
 
     it("fails if comptroller tells it to", async () => {
       await send(cToken.comptroller, 'setBorrowAllowed', [false]);
-      expect(await borrowFresh(cToken, borrower, borrowAmount)).toHaveTrollReject('BORROW_COMPTROLLER_REJECTION');
+      await expect(borrowFresh(cToken, borrower, borrowAmount)).rejects.toRevert('revert comptroller rejection');
     });
 
     it("proceeds if comptroller tells it to", async () => {
@@ -99,7 +99,7 @@ describe('CWrappedNative', function () {
 
     it("fails if market not fresh", async () => {
       await fastForward(cToken);
-      expect(await borrowFresh(cToken, borrower, borrowAmount)).toHaveTokenFailure('MARKET_NOT_FRESH', 'BORROW_FRESHNESS_CHECK');
+      await expect(borrowFresh(cToken, borrower, borrowAmount)).rejects.toRevert('revert market not fresh');
     });
 
     it("continues if fresh", async () => {
@@ -108,7 +108,7 @@ describe('CWrappedNative', function () {
     });
 
     it("fails if protocol has less than borrowAmount of underlying", async () => {
-      expect(await borrowFresh(cToken, borrower, borrowAmount.plus(1))).toHaveTokenFailure('TOKEN_INSUFFICIENT_CASH', 'BORROW_CASH_NOT_AVAILABLE');
+      await expect(borrowFresh(cToken, borrower, borrowAmount.plus(1))).rejects.toRevert('revert token insufficient cash');
     });
 
     it("fails if borrowBalanceStored fails (due to non-zero stored principal with zero account index)", async () => {
@@ -171,10 +171,6 @@ describe('CWrappedNative', function () {
       await expect(borrowNative(cToken, borrower, borrowAmount)).rejects.toRevert("revert INTEREST_RATE_MODEL_ERROR");
     });
 
-    it("reverts if error returned from borrowFresh", async () => {
-      await expect(borrowNative(cToken, borrower, borrowAmount.plus(1))).rejects.toRevert("revert borrow native failed");
-    });
-
     it("returns success from borrowFresh and transfers the correct amount", async () => {
       const beforeBalances = await getBalances([cToken], [borrower]);
       await fastForward(cToken);
@@ -197,10 +193,6 @@ describe('CWrappedNative', function () {
       await send(cToken.interestRateModel, 'setFailBorrowRate', [true]);
       await send(cToken, 'harnessFastForward', [1]);
       await expect(borrow(cToken, borrower, borrowAmount)).rejects.toRevert("revert INTEREST_RATE_MODEL_ERROR");
-    });
-
-    it("reverts if error returned from borrowFresh", async () => {
-      await expect(borrow(cToken, borrower, borrowAmount.plus(1))).rejects.toRevert("revert borrow failed");
     });
 
     it("returns success from borrowFresh and transfers the correct amount", async () => {
@@ -232,12 +224,12 @@ describe('CWrappedNative', function () {
 
         it("fails if repay is not allowed", async () => {
           await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
-          expect(await repayBorrowFresh(cToken, payer, borrower, repayAmount)).toHaveTrollReject('REPAY_BORROW_COMPTROLLER_REJECTION', 'MATH_ERROR');
+          await expect(repayBorrowFresh(cToken, payer, borrower, repayAmount)).rejects.toRevert('revert comptroller rejection');
         });
 
         it("fails if block number ≠ current block number", async () => {
           await fastForward(cToken);
-          expect(await repayBorrowFresh(cToken, payer, borrower, repayAmount)).toHaveTokenFailure('MARKET_NOT_FRESH', 'REPAY_BORROW_FRESHNESS_CHECK');
+          await expect(repayBorrowFresh(cToken, payer, borrower, repayAmount)).rejects.toRevert('revert market not fresh');
         });
 
         it("returns an error if calculating account new account borrow balance fails", async () => {
@@ -312,7 +304,7 @@ describe('CWrappedNative', function () {
 
     it("reverts when repay borrow fresh fails", async () => {
       await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
-      await expect(repayBorrowNative(cToken, borrower, repayAmount)).rejects.toRevert("revert repay native failed");
+      await expect(repayBorrowNative(cToken, borrower, repayAmount)).rejects.toRevert("revert comptroller rejection");
     });
 
     it("returns success from repayBorrowFresh and repays the right amount", async () => {
@@ -346,7 +338,7 @@ describe('CWrappedNative', function () {
 
     it("reverts when repay borrow fresh fails", async () => {
       await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
-      await expect(repayBorrow(cToken, borrower, repayAmount)).rejects.toRevert("revert repay failed");
+      await expect(repayBorrow(cToken, borrower, repayAmount)).rejects.toRevert("revert comptroller rejection");
     });
 
     it("returns success from repayBorrowFresh and repays the right amount", async () => {
@@ -377,11 +369,6 @@ describe('CWrappedNative', function () {
       await expect(repayBorrowBehalfNative(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert INTEREST_RATE_MODEL_ERROR");
     });
 
-    it("reverts from within repay borrow fresh", async () => {
-      await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
-      await expect(repayBorrowBehalfNative(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert repay behalf native failed");
-    });
-
     it("returns success from repayBorrowFresh and repays the right amount", async () => {
       await fastForward(cToken);
       const beforeAccountBorrowSnap = await borrowSnapshot(cToken, borrower);
@@ -406,11 +393,6 @@ describe('CWrappedNative', function () {
     it("reverts if interest accrual fails", async () => {
       await send(cToken.interestRateModel, 'setFailBorrowRate', [true]);
       await expect(repayBorrowBehalf(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert INTEREST_RATE_MODEL_ERROR");
-    });
-
-    it("reverts from within repay borrow fresh", async () => {
-      await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
-      await expect(repayBorrowBehalf(cToken, payer, borrower, repayAmount)).rejects.toRevert("revert repay behalf failed");
     });
 
     it("returns success from repayBorrowFresh and repays the right amount", async () => {

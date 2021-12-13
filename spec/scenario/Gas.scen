@@ -4,7 +4,7 @@
 
 Skip "Gas profile for CErc20 minting"
     NewComptroller
-    ListedCToken ZRX cZRX initialExchangeRate:1e9
+    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
     Assert Equal LastGas (Exactly 165073)
@@ -19,7 +19,7 @@ Skip "Gas profile for CCollateralCapErc20 minting"
 
 Skip "Gas profile for CErc20 redeem"
     NewComptroller
-    ListedCToken ZRX cZRX initialExchangeRate:1e9
+    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
     Redeem Geoff 10e9 cZRX
@@ -36,9 +36,9 @@ Skip "Gas profile for CCollateralCapErc20 redeem"
 
 Skip "Gas profile for CErc20 borrow"
     NewComptroller
-    ListedCToken ZRX cZRX initialExchangeRate:1e9
+    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     SetCollateralFactor cZRX collateralFactor:0.5
-    ListedCToken BAT cBAT initialExchangeRate:1e9
+    ListedCToken BAT cBAT initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     SetCollateralFactor cBAT collateralFactor:0.5
     Give cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
@@ -62,9 +62,9 @@ Skip "Gas profile for CCollateralCapErc20 borrow"
 
 Skip "Gas profile for CErc20 repay"
     NewComptroller
-    ListedCToken ZRX cZRX initialExchangeRate:1e9
+    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     SetCollateralFactor cZRX collateralFactor:0.5
-    ListedCToken BAT cBAT initialExchangeRate:1e9
+    ListedCToken BAT cBAT initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     SetCollateralFactor cBAT collateralFactor:0.5
     Give cBAT 10e18 BAT -- Faucet some bat to borrow
     EnterMarkets Geoff cZRX
@@ -92,7 +92,7 @@ Skip "Gas profile for CCollateralCapErc20 repay"
 
 Skip "Gas profile for CErc20 transfer"
     NewComptroller
-    ListedCToken ZRX cZRX initialExchangeRate:1e9
+    ListedCToken ZRX cZRX initialExchangeRate:1e9 delegatorType:CErc20DelegatorScenario cTokenType:CErc20DelegateScenario version:0
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
     Transfer Geoff Jared 10e9 cZRX

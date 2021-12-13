@@ -458,15 +458,10 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         uint256 tokens
     ) internal returns (uint256) {
         /* Fail if transfer not allowed */
-        uint256 allowed = comptroller.transferAllowed(address(this), src, dst, tokens);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.TRANSFER_COMPTROLLER_REJECTION, allowed);
-        }
+        require(comptroller.transferAllowed(address(this), src, dst, tokens) == 0, "comptroller rejection");
 
         /* Do not allow self-transfers */
-        if (src == dst) {
-            return fail(Error.BAD_INPUT, FailureInfo.TRANSFER_NOT_ALLOWED);
-        }
+        require(src != dst, "bad input");
 
         /* Get the allowance, infinite for the account owner */
         uint256 startingAllowance = 0;
@@ -521,10 +516,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         bool isNative
     ) internal returns (uint256, uint256) {
         /* Fail if mint not allowed */
-        uint256 allowed = comptroller.mintAllowed(address(this), minter, mintAmount);
-        if (allowed != 0) {
-            return (failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.MINT_COMPTROLLER_REJECTION, allowed), 0);
-        }
+        require(comptroller.mintAllowed(address(this), minter, mintAmount) == 0, "comptroller rejection");
 
         /*
          * Return if mintAmount is zero.
@@ -535,9 +527,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         }
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return (fail(Error.MARKET_NOT_FRESH, FailureInfo.MINT_FRESHNESS_CHECK), 0);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         MintLocalVars memory vars;
 
@@ -631,10 +621,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         }
 
         /* Fail if redeem not allowed */
-        uint256 allowed = comptroller.redeemAllowed(address(this), redeemer, vars.redeemTokens);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.REDEEM_COMPTROLLER_REJECTION, allowed);
-        }
+        require(comptroller.redeemAllowed(address(this), redeemer, vars.redeemTokens) == 0, "comptroller rejection");
 
         /*
          * Return if redeemTokensIn and redeemAmountIn are zero.
@@ -645,9 +632,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         }
 
         /* Verify market's block number equals current block number */
-        if (accrualBlockNumber != getBlockNumber()) {
-            return fail(Error.MARKET_NOT_FRESH, FailureInfo.REDEEM_FRESHNESS_CHECK);
-        }
+        require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         /*
          * We calculate the new total supply and redeemer balance, checking for underflow:
@@ -657,10 +642,8 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         vars.totalSupplyNew = sub_(totalSupply, vars.redeemTokens);
         vars.accountTokensNew = sub_(accountTokens[redeemer], vars.redeemTokens);
 
-        /* Fail gracefully if protocol has insufficient cash */
-        if (getCashPrior() < vars.redeemAmount) {
-            return fail(Error.TOKEN_INSUFFICIENT_CASH, FailureInfo.REDEEM_TRANSFER_OUT_NOT_POSSIBLE);
-        }
+        /* Reverts if protocol has insufficient cash */
+        require(getCashPrior() >= vars.redeemAmount, "token insufficient cash");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -705,10 +688,10 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         uint256 seizeTokens
     ) internal returns (uint256) {
         /* Fail if seize not allowed */
-        uint256 allowed = comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.LIQUIDATE_SEIZE_COMPTROLLER_REJECTION, allowed);
-        }
+        require(
+            comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens) == 0,
+            "comptroller rejection"
+        );
 
         /*
          * Return if seizeTokens is zero.
@@ -719,9 +702,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         }
 
         /* Fail if borrower = liquidator */
-        if (borrower == liquidator) {
-            return fail(Error.INVALID_ACCOUNT_PAIR, FailureInfo.LIQUIDATE_SEIZE_LIQUIDATOR_IS_BORROWER);
-        }
+        require(borrower != liquidator, "invalid account pair");
 
         /*
          * We calculate the new borrower and liquidator token balances, failing on underflow/overflow:
