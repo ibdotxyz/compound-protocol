@@ -107,7 +107,7 @@ Test "cToken Transfer paused"
     Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 40e9)
     Assert Equal (Erc20 cZRX TokenBalance Coburn) (Exactly 10e9)
 
-Test "Mint reverts if it's a credit account"
+Test "Transfer reverts if it's a credit account"
     NewComptroller
     ListedCToken ZRX cZRX initialExchangeRate:1e9
     Prep Geoff Some ZRX cZRX
@@ -115,7 +115,7 @@ Test "Mint reverts if it's a credit account"
     -- Just to be sure, check initial balances
     Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 50e9)
     Assert Equal (Erc20 cZRX TokenBalance Torrey) Zero
-    Comptroller SetCreditLimit Torrey 100e18
+    Comptroller SetCreditLimit Torrey cZRX 100e18
     AllowFailures
     Transfer Geoff Torrey 10e9 cZRX
     Assert Revert "revert cannot transfer to a credit account"

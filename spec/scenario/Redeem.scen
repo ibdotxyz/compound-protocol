@@ -51,7 +51,7 @@ Test "Mint, Enter, Borrow, SetCreditLimit and then Redeem All"
     Assert True (Comptroller CheckMembership Geoff cZRX)
     Assert True (Comptroller CheckMembership Geoff cBAT)
     -- Set credit limit
-    Comptroller SetCreditLimit Geoff 10000e18
+    Comptroller SetCreditLimit Geoff cBAT 10000e18
     -- Redeem all
     Redeem Geoff 1000e8 cZRX
     Assert Equal (Erc20 cZRX TokenBalance Geoff) Zero

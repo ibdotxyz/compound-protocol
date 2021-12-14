@@ -108,7 +108,7 @@ Test "Mint reverts if it's a credit account"
     NewComptroller
     ListedCToken ZRX cZRX initialExchangeRate:1e9
     Prep Geoff Some ZRX cZRX
-    Comptroller SetCreditLimit Geoff 100e18
+    Comptroller SetCreditLimit Geoff cZRX 100e18
     AllowFailures
     Mint Geoff 50e18 cZRX
     Assert Revert "revert credit account cannot mint"

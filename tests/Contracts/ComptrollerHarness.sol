@@ -42,6 +42,7 @@ contract ComptrollerHarness is Comptroller {
 // CompoundComptrollerHarness is only used for CCTokenHarness
 contract CompoundComptrollerHarness is ComptrollerHarness {
     address compAddress;
+    mapping(address => uint256) public compAccrued;
 
     constructor() public ComptrollerHarness() {}
 
