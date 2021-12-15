@@ -981,8 +981,8 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         totalReserves = totalReservesNew;
 
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        // Restrict reducing reserves in native token. Implementations except `CWrappedNative` won't use parameter `isNative`.
-        doTransferOut(admin, reduceAmount, true);
+        // Restrict reducing reserves in wrapped token. Implementations except `CWrappedNative` won't use parameter `isNative`.
+        doTransferOut(admin, reduceAmount, false);
 
         emit ReservesReduced(admin, reduceAmount, totalReservesNew);
 
