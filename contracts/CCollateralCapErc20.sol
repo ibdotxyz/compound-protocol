@@ -131,7 +131,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
      * @param newCollateralCap New collateral cap for this market. A value of 0 corresponds to no cap.
      */
     function _setCollateralCap(uint256 newCollateralCap) external {
-        require(msg.sender == admin, "only admin can set collateral cap");
+        require(msg.sender == admin, "admin only");
 
         collateralCap = newCollateralCap;
         emit NewCollateralCap(address(this), newCollateralCap);
@@ -188,8 +188,8 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         uint256 amount,
         bytes calldata data
     ) external nonReentrant returns (bool) {
-        require(amount > 0, "flashLoan amount should be greater than zero");
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        require(amount > 0, "invalid flashloan amount");
+        accrueInterest();
         require(
             ComptrollerInterfaceExtension(address(comptroller)).flashloanAllowed(
                 address(this),
@@ -248,7 +248,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         // Make sure accountCollateralTokens of `account` is initialized.
         initializeAccountCollateralTokens(account);
 
-        require(msg.sender == address(comptroller), "only comptroller may register collateral for user");
+        require(msg.sender == address(comptroller), "comptroller only");
 
         uint256 amount = sub_(accountTokens[account], accountCollateralTokens[account]);
         return increaseUserCollateralInternal(account, amount);
@@ -263,7 +263,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         // Make sure accountCollateralTokens of `account` is initialized.
         initializeAccountCollateralTokens(account);
 
-        require(msg.sender == address(comptroller), "only comptroller may unregister collateral for user");
+        require(msg.sender == address(comptroller), "comptroller only");
         require(
             comptroller.redeemAllowed(address(this), account, accountCollateralTokens[account]) == 0,
             "comptroller rejection"
@@ -650,7 +650,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         // Make sure accountCollateralTokens of `redeemer` is initialized.
         initializeAccountCollateralTokens(redeemer);
 
-        require(redeemTokensIn == 0 || redeemAmountIn == 0, "one of redeemTokensIn or redeemAmountIn must be zero");
+        require(redeemTokensIn == 0 || redeemAmountIn == 0, "bad input");
 
         RedeemLocalVars memory vars;
 
@@ -695,7 +695,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         /* Reverts if protocol has insufficient cash */
-        require(getCashPrior() >= vars.redeemAmount, "token insufficient cash");
+        require(getCashPrior() >= vars.redeemAmount, "insufficient cash");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
