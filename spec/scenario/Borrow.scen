@@ -42,7 +42,7 @@ Test "Borrow some BAT fails when no BAT available"
     Invariant Static (CToken cZRX ExchangeRateStored)
     AllowFailures
     Borrow Geoff 1e18 cBAT
-    Assert Revert "revert token insufficient cash"
+    Assert Revert "revert insufficient cash"
 
 Test "Borrow fails if market not listed"
     NewComptroller price:1.0

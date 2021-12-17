@@ -109,7 +109,7 @@ describe('CWrappedNative', function () {
     });
 
     it("fails if protocol has less than borrowAmount of underlying", async () => {
-      await expect(borrowFresh(cToken, borrower, borrowAmount.plus(1))).rejects.toRevert('revert token insufficient cash');
+      await expect(borrowFresh(cToken, borrower, borrowAmount.plus(1))).rejects.toRevert('revert insufficient cash');
     });
 
     it("fails if borrowBalanceStored fails (due to non-zero stored principal with zero account index)", async () => {

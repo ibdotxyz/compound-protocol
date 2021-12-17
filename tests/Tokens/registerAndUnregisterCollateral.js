@@ -14,10 +14,10 @@ describe('CToken', function () {
   });
 
   it("fails to register collateral for non comptroller", async () => {
-    await expect(send(cToken, 'registerCollateral', [root])).rejects.toRevert("revert only comptroller may register collateral for user");
+    await expect(send(cToken, 'registerCollateral', [root])).rejects.toRevert("revert comptroller only");
   });
 
   it("fails to unregister collateral for non comptroller", async () => {
-    await expect(send(cToken, 'unregisterCollateral', [root])).rejects.toRevert("revert only comptroller may unregister collateral for user");
+    await expect(send(cToken, 'unregisterCollateral', [root])).rejects.toRevert("revert comptroller only");
   });
 });
