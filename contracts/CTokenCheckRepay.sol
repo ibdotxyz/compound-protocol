@@ -217,7 +217,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return The total borrows with interest
      */
     function totalBorrowsCurrent() external nonReentrant returns (uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         return totalBorrows;
     }
 
@@ -227,7 +227,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return The calculated balance
      */
     function borrowBalanceCurrent(address account) external nonReentrant returns (uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         return borrowBalanceStored(account);
     }
 
@@ -269,7 +269,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return Calculated exchange rate scaled by 1e18
      */
     function exchangeRateCurrent() public nonReentrant returns (uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         return exchangeRateStored();
     }
 
@@ -386,7 +386,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual mint amount.
      */
     function mintInternal(uint256 mintAmount, bool isNative) internal nonReentrant returns (uint256, uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
         return mintFresh(msg.sender, mintAmount, isNative);
     }
@@ -399,7 +399,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeemInternal(uint256 redeemTokens, bool isNative) internal nonReentrant returns (uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         return redeemFresh(msg.sender, redeemTokens, 0, isNative);
     }
@@ -412,7 +412,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeemUnderlyingInternal(uint256 redeemAmount, bool isNative) internal nonReentrant returns (uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         return redeemFresh(msg.sender, 0, redeemAmount, isNative);
     }
@@ -424,7 +424,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function borrowInternal(uint256 borrowAmount, bool isNative) internal nonReentrant returns (uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         // borrowFresh emits borrow-specific logs on errors, so we don't need to
         return borrowFresh(msg.sender, borrowAmount, isNative);
     }
@@ -454,7 +454,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
         require(accrualBlockNumber == getBlockNumber(), "market not fresh");
 
         /* Reverts if protocol has insufficient cash */
-        require(getCashPrior() >= borrowAmount, "token insufficient cash");
+        require(getCashPrior() >= borrowAmount, "insufficient cash");
 
         BorrowLocalVars memory vars;
 
@@ -500,7 +500,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual repayment amount.
      */
     function repayBorrowInternal(uint256 repayAmount, bool isNative) internal nonReentrant returns (uint256, uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         return repayBorrowFresh(msg.sender, msg.sender, repayAmount, isNative, false);
     }
@@ -517,7 +517,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
         uint256 repayAmount,
         bool isNative
     ) internal nonReentrant returns (uint256, uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         return repayBorrowFresh(msg.sender, borrower, repayAmount, isNative, false);
     }
@@ -634,7 +634,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
         CTokenInterface cTokenCollateral,
         bool isNative
     ) internal nonReentrant returns (uint256, uint256) {
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        accrueInterest();
         require(cTokenCollateral.accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
 
         // liquidateBorrowFresh emits borrow-specific logs on errors, so we don't need to
@@ -829,7 +829,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
 
         ComptrollerInterface oldComptroller = comptroller;
         // Ensure invoke comptroller.isComptroller() returns true
-        require(newComptroller.isComptroller(), "marker method returned false");
+        require(newComptroller.isComptroller(), "invalid Comptroller");
 
         // Set market's comptroller to newComptroller
         comptroller = newComptroller;
@@ -1048,7 +1048,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
         oldInterestRateModel = interestRateModel;
 
         // Ensure invoke newInterestRateModel.isInterestRateModel() returns true
-        require(newInterestRateModel.isInterestRateModel(), "marker method returned false");
+        require(newInterestRateModel.isInterestRateModel(), "invalid IRM");
 
         // Set the interest rate model to newInterestRateModel
         interestRateModel = newInterestRateModel;

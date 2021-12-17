@@ -193,7 +193,7 @@ describe('CToken', function () {
 
       it("fails if insufficient protocol cash to transfer out", async() => {
         await send(cToken.underlying, 'harnessSetBalance', [cToken._address, 1]);
-        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert('revert token insufficient cash');
+        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert('revert insufficient cash');
       });
 
       it("fails if exchange calculation fails", async () => {
@@ -258,7 +258,7 @@ describe('CToken', function () {
 
     it("returns error from redeemFresh without emitting any extra logs", async () => {
       await setBalance(cToken.underlying, cToken._address, 0);
-      await expect(quickRedeem(cToken, redeemer, redeemTokens, {exchangeRate})).rejects.toRevert("revert token insufficient cash");
+      await expect(quickRedeem(cToken, redeemer, redeemTokens, {exchangeRate})).rejects.toRevert("revert insufficient cash");
     });
 
     it("returns success from redeemFresh and redeems the right amount", async () => {
