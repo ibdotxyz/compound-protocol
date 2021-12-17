@@ -134,7 +134,7 @@ contract ComptrollerBorked {
         _maxAssets;
         _reinitializing;
 
-        require(msg.sender == unitroller.admin(), "only unitroller admin can change brains");
+        require(msg.sender == unitroller.admin(), "unitroller admin only");
         unitroller._acceptImplementation();
     }
 }
