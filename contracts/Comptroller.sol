@@ -671,7 +671,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param newVersion The new version
      */
     function updateCTokenVersion(address cToken, Version newVersion) external {
-        require(msg.sender == cToken, "only cToken could update its version");
+        require(msg.sender == cToken, "cToken only");
 
         // This function will be called when a new CToken implementation becomes active.
         // If a new CToken is newly created, this market is not listed yet. The version of
@@ -1055,7 +1055,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @return uint 0=success, otherwise a failure. (See enum Error for details)
      */
     function _supportMarket(CToken cToken, Version version) external returns (uint256) {
-        require(msg.sender == admin, "only admin may support market");
+        require(msg.sender == admin, "admin only");
         require(!isMarketListed(address(cToken)), "market already listed");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
@@ -1074,7 +1074,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param cToken The address of the market (token) to delist
      */
     function _delistMarket(CToken cToken) external {
-        require(msg.sender == admin, "only admin may delist market");
+        require(msg.sender == admin, "admin only");
         require(isMarketListed(address(cToken)), "market not listed");
         require(cToken.totalSupply() == 0, "market not empty");
 
@@ -1106,7 +1106,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param newSupplyCapGuardian The address of the new Supply Cap Guardian
      */
     function _setSupplyCapGuardian(address newSupplyCapGuardian) external {
-        require(msg.sender == admin, "only admin can set supply cap guardian");
+        require(msg.sender == admin, "admin only");
 
         // Save current value for inclusion in log
         address oldSupplyCapGuardian = supplyCapGuardian;
@@ -1126,10 +1126,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param newSupplyCaps The new supply cap values in underlying to be set. A value of 0 corresponds to unlimited supplying.
      */
     function _setMarketSupplyCaps(CToken[] calldata cTokens, uint256[] calldata newSupplyCaps) external {
-        require(
-            msg.sender == admin || msg.sender == supplyCapGuardian,
-            "only admin or supply cap guardian can set supply caps"
-        );
+        require(msg.sender == admin || msg.sender == supplyCapGuardian, "admin or supply cap guardian only");
 
         uint256 numMarkets = cTokens.length;
         uint256 numSupplyCaps = newSupplyCaps.length;
@@ -1150,10 +1147,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
      */
     function _setMarketBorrowCaps(CToken[] calldata cTokens, uint256[] calldata newBorrowCaps) external {
-        require(
-            msg.sender == admin || msg.sender == borrowCapGuardian,
-            "only admin or borrow cap guardian can set borrow caps"
-        );
+        require(msg.sender == admin || msg.sender == borrowCapGuardian, "admin or borrow cap guardian only");
 
         uint256 numMarkets = cTokens.length;
         uint256 numBorrowCaps = newBorrowCaps.length;
@@ -1171,7 +1165,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
      */
     function _setBorrowCapGuardian(address newBorrowCapGuardian) external {
-        require(msg.sender == admin, "only admin can set borrow cap guardian");
+        require(msg.sender == admin, "admin only");
 
         // Save current value for inclusion in log
         address oldBorrowCapGuardian = borrowCapGuardian;
@@ -1211,7 +1205,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @param newLiquidityMining The address of the new liquidity mining module
      */
     function _setLiquidityMining(address newLiquidityMining) external {
-        require(msg.sender == admin, "only admin can set liquidity mining module");
+        require(msg.sender == admin, "admin only");
         require(LiquidityMiningInterface(newLiquidityMining).comptroller() == address(this), "mismatch comptroller");
 
         // Save current value for inclusion in log
@@ -1225,9 +1219,9 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     function _setMintPaused(CToken cToken, bool state) public returns (bool) {
-        require(isMarketListed(address(cToken)), "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(isMarketListed(address(cToken)), "market not listed");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "guardian or admin only");
+        require(msg.sender == admin || state == true, "admin only");
 
         mintGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Mint", state);
@@ -1235,9 +1229,9 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     function _setBorrowPaused(CToken cToken, bool state) public returns (bool) {
-        require(isMarketListed(address(cToken)), "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(isMarketListed(address(cToken)), "market not listed");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "guardian or admin only");
+        require(msg.sender == admin || state == true, "admin only");
 
         borrowGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Borrow", state);
@@ -1245,9 +1239,9 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     function _setFlashloanPaused(CToken cToken, bool state) public returns (bool) {
-        require(isMarketListed(address(cToken)), "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(isMarketListed(address(cToken)), "market not listed");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "guardian or admin only");
+        require(msg.sender == admin || state == true, "admin only");
 
         flashloanGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Flashloan", state);
@@ -1255,8 +1249,8 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     function _setTransferPaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "guardian or admin only");
+        require(msg.sender == admin || state == true, "admin only");
 
         transferGuardianPaused = state;
         emit ActionPaused("Transfer", state);
@@ -1264,8 +1258,8 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     function _setSeizePaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(msg.sender == pauseGuardian || msg.sender == admin, "guardian or admin only");
+        require(msg.sender == admin || state == true, "admin only");
 
         seizeGuardianPaused = state;
         emit ActionPaused("Seize", state);
@@ -1273,8 +1267,8 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     function _become(Unitroller unitroller) public {
-        require(msg.sender == unitroller.admin(), "only unitroller admin can change brains");
-        require(unitroller._acceptImplementation() == 0, "change not authorized");
+        require(msg.sender == unitroller.admin(), "unitroller admin only");
+        require(unitroller._acceptImplementation() == 0, "unauthorized");
     }
 
     /**

@@ -371,7 +371,7 @@ contract CErc20 is CToken, CErc20Interface {
         uint256 redeemAmountIn,
         bool isNative
     ) internal returns (uint256) {
-        require(redeemTokensIn == 0 || redeemAmountIn == 0, "one of redeemTokensIn or redeemAmountIn must be zero");
+        require(redeemTokensIn == 0 || redeemAmountIn == 0, "bad input");
 
         RedeemLocalVars memory vars;
 
@@ -420,7 +420,7 @@ contract CErc20 is CToken, CErc20Interface {
         vars.accountTokensNew = sub_(accountTokens[redeemer], vars.redeemTokens);
 
         /* Reverts if protocol has insufficient cash */
-        require(getCashPrior() >= vars.redeemAmount, "token insufficient cash");
+        require(getCashPrior() >= vars.redeemAmount, "insufficient cash");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS

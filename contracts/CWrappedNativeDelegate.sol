@@ -26,7 +26,7 @@ contract CWrappedNativeDelegate is CWrappedNative {
             implementation = address(0);
         }
 
-        require(msg.sender == admin, "only the admin may call _becomeImplementation");
+        require(msg.sender == admin, "admin only");
 
         // Set CToken version in comptroller and convert native token to wrapped token.
         ComptrollerInterfaceExtension(address(comptroller)).updateCTokenVersion(
@@ -48,6 +48,6 @@ contract CWrappedNativeDelegate is CWrappedNative {
             implementation = address(0);
         }
 
-        require(msg.sender == admin, "only the admin may call _resignImplementation");
+        require(msg.sender == admin, "admin only");
     }
 }

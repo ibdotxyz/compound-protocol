@@ -258,8 +258,8 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         uint256 amount,
         bytes calldata data
     ) external nonReentrant returns (bool) {
-        require(amount > 0, "flashLoan amount should be greater than zero");
-        require(accrueInterest() == uint256(Error.NO_ERROR), "accrue interest failed");
+        require(amount > 0, "invalid flashloan amount");
+        accrueInterest();
         require(
             ComptrollerInterfaceExtension(address(comptroller)).flashloanAllowed(
                 address(this),
@@ -590,7 +590,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         uint256 redeemAmountIn,
         bool isNative
     ) internal returns (uint256) {
-        require(redeemTokensIn == 0 || redeemAmountIn == 0, "one of redeemTokensIn or redeemAmountIn must be zero");
+        require(redeemTokensIn == 0 || redeemAmountIn == 0, "bad input");
 
         RedeemLocalVars memory vars;
 
@@ -639,7 +639,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         vars.accountTokensNew = sub_(accountTokens[redeemer], vars.redeemTokens);
 
         /* Reverts if protocol has insufficient cash */
-        require(getCashPrior() >= vars.redeemAmount, "token insufficient cash");
+        require(getCashPrior() >= vars.redeemAmount, "insufficient cash");
 
         /////////////////////////
         // EFFECTS & INTERACTIONS

@@ -27,7 +27,7 @@ Test "Borrow some WBTC fails when no WBTC available"
     Invariant Static (CToken cZRX ExchangeRateStored)
     AllowFailures
     Borrow Geoff 1e8 cWBTC
-    Assert Revert "revert token insufficient cash"
+    Assert Revert "revert insufficient cash"
 
 Test "Borrow some WBTC fails when WBTC paused"
     NewComptroller price:1.0

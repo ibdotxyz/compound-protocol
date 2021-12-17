@@ -107,7 +107,7 @@ describe('Comptroller', () => {
     });
 
     it("fails if called by non-admin", async () => {
-      await expect(send(comptroller, '_setLiquidityMining', [liquidityMining._address], {from: accounts[0]})).rejects.toRevert("revert only admin can set liquidity mining module");
+      await expect(send(comptroller, '_setLiquidityMining', [liquidityMining._address], {from: accounts[0]})).rejects.toRevert("revert admin only");
     });
 
     it("fails for mismatch comptroller", async () => {
@@ -183,7 +183,7 @@ describe('Comptroller', () => {
 
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken(root);
-      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version], {from: accounts[0]})).rejects.toRevert('revert only admin may support market');
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version], {from: accounts[0]})).rejects.toRevert('revert admin only');
     });
 
     it("fails if asset is not a CToken", async () => {
@@ -243,7 +243,7 @@ describe('Comptroller', () => {
 
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken(root);
-      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address], {from: accounts[0]})).rejects.toRevert('revert only admin may delist market');
+      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address], {from: accounts[0]})).rejects.toRevert('revert admin only');
     });
 
     it("fails if market not listed", async () => {
