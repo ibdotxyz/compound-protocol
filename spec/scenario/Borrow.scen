@@ -90,9 +90,10 @@ Test "Borrow some BAT with credit limit"
     GiveCToken cBAT 100e18 BAT -- Faucet some bat to borrow
     Support cBAT collateralFactor:0.5
     Comptroller SetCreditLimit Geoff cBAT 10e18
+    Assert Equal (Comptroller MembershipLength Geoff) (Exactly 0)
+    Borrow Geoff 1e18 cBAT
     Assert Equal (Comptroller MembershipLength Geoff) (Exactly 1)
     Assert True (Comptroller CheckMembership Geoff cBAT)
-    Borrow Geoff 1e18 cBAT
     Assert Equal (cToken cBAT BorrowBalance Geoff) (Exactly 1e18)
     Assert Equal (Erc20 BAT TokenBalance Geoff) (Exactly 1e18)
     Assert Equal (Erc20 BAT TokenBalance cBAT) (Exactly 99e18)
