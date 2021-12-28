@@ -117,7 +117,7 @@ Test "Borrow, hold a few blocks, and repay behalf part"
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 3e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 3e8
 
-Test "Prohibit repay by comptroller rejection due to mock unlist"
+Test "Prohibit repay by rejected due to mock unlist"
     NewBorrow borrowAmount:1e8 borrowRate:0.000005
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 1e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 1e8

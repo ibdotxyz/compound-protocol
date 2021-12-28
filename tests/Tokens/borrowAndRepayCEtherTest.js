@@ -79,7 +79,7 @@ describe('CEther', function () {
       await expect(await borrowFresh(cToken, borrower, borrowAmount)).toSucceed();
     });
 
-    it("fails if market not fresh", async () => {
+    it("fails if market is stale", async () => {
       await fastForward(cToken);
       expect(await borrowFresh(cToken, borrower, borrowAmount)).toHaveTokenFailure('MARKET_NOT_FRESH', 'BORROW_FRESHNESS_CHECK');
     });

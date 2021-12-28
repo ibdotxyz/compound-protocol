@@ -31,7 +31,7 @@ describe('CToken', function () {
       expect(await call(cToken, 'reserveFactorMantissa')).toEqualNumber(0);
     });
 
-    it("rejects change if market not fresh", async () => {
+    it("rejects change if market is stale", async () => {
       expect(await send(cToken, 'harnessFastForward', [5])).toSucceed();
       expect(await send(cToken, 'harnessSetReserveFactorFresh', [factor])).toHaveTokenFailure('MARKET_NOT_FRESH', 'SET_RESERVE_FACTOR_FRESH_CHECK');
       expect(await call(cToken, 'reserveFactorMantissa')).toEqualNumber(0);
@@ -115,7 +115,7 @@ describe('CToken', function () {
       expect(await call(cToken, 'totalReserves')).toEqualNumber(reserves);
     });
 
-    it("fails if market not fresh", async () => {
+    it("fails if market is stale", async () => {
       expect(await send(cToken, 'harnessFastForward', [5])).toSucceed();
       expect(await send(cToken, 'harnessReduceReservesFresh', [reduction])).toHaveTokenFailure('MARKET_NOT_FRESH', 'REDUCE_RESERVES_FRESH_CHECK');
       expect(await call(cToken, 'totalReserves')).toEqualNumber(reserves);
