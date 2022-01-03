@@ -31,7 +31,7 @@ contract CTokenCheckRepay is CTokenInterface, Exponential, TokenErrorReporter {
         string memory symbol_,
         uint8 decimals_
     ) public {
-        require(msg.sender == admin, "admin obly");
+        require(msg.sender == admin, "admin only");
         require(accrualBlockNumber == 0 && borrowIndex == 0, "market may only be initialized once");
 
         // Set initial exchange rate
