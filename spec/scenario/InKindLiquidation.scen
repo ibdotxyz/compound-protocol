@@ -96,7 +96,7 @@ Test "Liquidate in-kind beyond max close"
     Prep Torrey 20e18 BAT cBAT
     AllowFailures
     Liquidate Torrey "->" Geoff 20e18 cBAT "Seizing" cBAT
-    Assert Revert "revert comptroller rejection"
+    Assert Revert "revert rejected"
 
 Test "Proper In-Kind Liquidation"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005

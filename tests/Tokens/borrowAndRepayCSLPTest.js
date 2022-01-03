@@ -79,7 +79,7 @@ describe('CToken', function () {
 
     it("fails if comptroller tells it to", async () => {
       await send(cToken.comptroller, 'setBorrowAllowed', [false]);
-      await expect(borrowFresh(cToken, borrower, borrowAmount)).rejects.toRevert('revert comptroller rejection');
+      await expect(borrowFresh(cToken, borrower, borrowAmount)).rejects.toRevert('revert rejected');
     });
 
     it("proceeds if comptroller tells it to", async () => {
@@ -87,9 +87,9 @@ describe('CToken', function () {
       expect(await borrowFresh(cToken, borrower, borrowAmount)).toSucceed();
     });
 
-    it("fails if market not fresh", async () => {
+    it("fails if market is stale", async () => {
       await fastForward(cToken);
-      await expect(borrowFresh(cToken, borrower, borrowAmount)).rejects.toRevert('revert market not fresh');
+      await expect(borrowFresh(cToken, borrower, borrowAmount)).rejects.toRevert('revert market is stale');
     });
 
     it("continues if fresh", async () => {
@@ -217,12 +217,12 @@ describe('CToken', function () {
 
         it("fails if repay is not allowed", async () => {
           await send(cToken.comptroller, 'setRepayBorrowAllowed', [false]);
-          await expect(repayBorrowFresh(cToken, payer, borrower, repayAmount)).rejects.toRevert('revert comptroller rejection');
+          await expect(repayBorrowFresh(cToken, payer, borrower, repayAmount)).rejects.toRevert('revert rejected');
         });
 
         it("fails if block number ≠ current block number", async () => {
           await fastForward(cToken);
-          await expect(repayBorrowFresh(cToken, payer, borrower, repayAmount)).rejects.toRevert('revert market not fresh');
+          await expect(repayBorrowFresh(cToken, payer, borrower, repayAmount)).rejects.toRevert('revert market is stale');
         });
 
         it("fails if insufficient approval", async() => {

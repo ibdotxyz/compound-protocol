@@ -63,7 +63,7 @@ describe('CToken', function () {
       expect(await call(cToken, 'balanceOf', [root])).toEqualNumber(100);
 
       await send(cToken.comptroller, 'setTransferAllowed', [false])
-      await expect(send(cToken, 'transfer', [root, 50])).rejects.toRevert('revert comptroller rejection');
+      await expect(send(cToken, 'transfer', [root, 50])).rejects.toRevert('revert rejected');
 
       await send(cToken.comptroller, 'setTransferAllowed', [true])
       await send(cToken.comptroller, 'setTransferVerify', [false])

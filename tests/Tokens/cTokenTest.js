@@ -22,7 +22,7 @@ describe('CToken', function () {
     });
 
     it("fails when 0 initial exchange rate", async () => {
-      await expect(makeCToken({ exchangeRate: 0 })).rejects.toRevert("revert initial exchange rate must be greater than zero.");
+      await expect(makeCToken({ exchangeRate: 0 })).rejects.toRevert("revert invalid exchange rate");
     });
 
     it("succeeds with erc-20 underlying and non-zero exchange rate", async () => {

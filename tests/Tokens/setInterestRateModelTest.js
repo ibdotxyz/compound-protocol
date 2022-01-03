@@ -28,7 +28,7 @@ describe('CToken', function () {
       expect(await call(cToken, 'interestRateModel')).toEqual(oldModel._address);
     });
 
-    it("fails if market not fresh", async () => {
+    it("fails if market is stale", async () => {
       expect(await send(cToken, 'harnessFastForward', [5])).toSucceed();
       expect(
         await send(cToken, 'harnessSetInterestRateModelFresh', [newModel._address])
