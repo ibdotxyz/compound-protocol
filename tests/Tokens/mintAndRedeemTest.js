@@ -72,7 +72,7 @@ describe('CToken', function () {
 
     it("fails if comptroller tells it to", async () => {
       await send(cToken.comptroller, 'setMintAllowed', [false]);
-      await expect(mintFresh(cToken, minter, mintAmount)).rejects.toRevert('revert comptroller rejection');
+      await expect(mintFresh(cToken, minter, mintAmount)).rejects.toRevert('revert rejected');
     });
 
     it("proceeds if comptroller tells it to", async () => {
@@ -81,7 +81,7 @@ describe('CToken', function () {
 
     it("fails if not fresh", async () => {
       await fastForward(cToken);
-      await expect(mintFresh(cToken, minter, mintAmount)).rejects.toRevert('revert market not fresh');
+      await expect(mintFresh(cToken, minter, mintAmount)).rejects.toRevert('revert market is stale');
     });
 
     it("continues if fresh", async () => {
@@ -112,7 +112,7 @@ describe('CToken', function () {
 
     it("fails if transferring in fails", async () => {
       await send(cToken.underlying, 'harnessSetFailTransferFromAddress', [minter, true]);
-      await expect(mintFresh(cToken, minter, mintAmount)).rejects.toRevert('revert TOKEN_TRANSFER_IN_FAILED');
+      await expect(mintFresh(cToken, minter, mintAmount)).rejects.toRevert('revert transfer failed');
     });
 
     it("transfers the underlying cash, tokens, and emits Mint, Transfer events", async () => {
@@ -178,12 +178,12 @@ describe('CToken', function () {
 
       it("fails if comptroller tells it to", async () =>{
         await send(cToken.comptroller, 'setRedeemAllowed', [false]);
-        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert('revert comptroller rejection');
+        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert('revert rejected');
       });
 
       it("fails if not fresh", async () => {
         await fastForward(cToken);
-        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert('revert market not fresh');
+        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert('revert market is stale');
       });
 
       it("continues if fresh", async () => {
@@ -208,7 +208,7 @@ describe('CToken', function () {
 
       it("fails if transferring out fails", async () => {
         await send(cToken.underlying, 'harnessSetFailTransferToAddress', [redeemer, true]);
-        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert("revert TOKEN_TRANSFER_OUT_FAILED");
+        await expect(redeemFresh(cToken, redeemer, redeemTokens, redeemAmount)).rejects.toRevert("revert transfer failed");
       });
 
       it("fails if total supply < redemption amount", async () => {
