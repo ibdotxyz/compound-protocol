@@ -254,6 +254,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             require(nextTotalSupplies < supplyCap, "market supply cap reached");
         }
 
+        if (liquidityMining != address(0)) {
+            address[] memory accounts = new address[](1);
+            accounts[0] = minter;
+            LiquidityMiningInterface(liquidityMining).updateSupplyIndex(cToken, accounts);
+        }
+
         return uint256(Error.NO_ERROR);
     }
 
@@ -294,7 +300,18 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) external returns (uint256) {
-        return redeemAllowedInternal(cToken, redeemer, redeemTokens);
+        uint256 allowed = redeemAllowedInternal(cToken, redeemer, redeemTokens);
+        if (allowed != uint256(Error.NO_ERROR)) {
+            return allowed;
+        }
+
+        if (liquidityMining != address(0)) {
+            address[] memory accounts = new address[](1);
+            accounts[0] = redeemer;
+            LiquidityMiningInterface(liquidityMining).updateSupplyIndex(cToken, accounts);
+        }
+
+        return uint256(Error.NO_ERROR);
     }
 
     function redeemAllowedInternal(
@@ -392,6 +409,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(err == Error.NO_ERROR, "failed to get account liquidity");
         require(shortfall == 0, "insufficient liquidity");
 
+        if (liquidityMining != address(0)) {
+            address[] memory accounts = new address[](1);
+            accounts[0] = borrower;
+            LiquidityMiningInterface(liquidityMining).updateBorrowIndex(cToken, accounts);
+        }
+
         return uint256(Error.NO_ERROR);
     }
 
@@ -438,6 +461,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
+        }
+
+        if (liquidityMining != address(0)) {
+            address[] memory accounts = new address[](1);
+            accounts[0] = borrower;
+            LiquidityMiningInterface(liquidityMining).updateBorrowIndex(cToken, accounts);
         }
 
         return uint256(Error.NO_ERROR);
@@ -557,7 +586,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(!isCreditAccount(borrower, cTokenBorrowed), "cannot sieze from credit account");
 
         // Shh - currently unused
-        liquidator;
         seizeTokens;
 
         require(isMarketListed(cTokenBorrowed) && isMarketListed(cTokenCollateral), "market not listed");
@@ -565,6 +593,13 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             CToken(cTokenCollateral).comptroller() == CToken(cTokenBorrowed).comptroller(),
             "comptroller mismatched"
         );
+
+        if (liquidityMining != address(0)) {
+            address[] memory accounts = new address[](2);
+            accounts[0] = borrower;
+            accounts[1] = liquidator;
+            LiquidityMiningInterface(liquidityMining).updateSupplyIndex(cTokenCollateral, accounts);
+        }
 
         return uint256(Error.NO_ERROR);
     }
@@ -615,12 +650,21 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(!transferGuardianPaused, "transfer is paused");
         require(!isCreditAccount(dst, cToken), "cannot transfer to a credit account");
 
-        // Shh - currently unused
-        dst;
-
         // Currently the only consideration is whether or not
         //  the src is allowed to redeem this many tokens
-        return redeemAllowedInternal(cToken, src, transferTokens);
+        uint256 allowed = redeemAllowedInternal(cToken, src, transferTokens);
+        if (allowed != uint256(Error.NO_ERROR)) {
+            return allowed;
+        }
+
+        if (liquidityMining != address(0)) {
+            address[] memory accounts = new address[](2);
+            accounts[0] = src;
+            accounts[1] = dst;
+            LiquidityMiningInterface(liquidityMining).updateSupplyIndex(cToken, accounts);
+        }
+
+        return uint256(Error.NO_ERROR);
     }
 
     /**
