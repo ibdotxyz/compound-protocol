@@ -117,7 +117,7 @@ Test "Borrow, hold a few blocks, and repay behalf part"
     Assert Equal (CToken cBAT BorrowBalance Geoff) 3e18
     Assert Equal (CToken cBAT TotalBorrowsCurrent) 3e18
 
-Test "Repay successfully even the market has been delisted"
+Test "Prohibit repay by rejected due to mock unlist"
     NewBorrow borrowAmount:1e18 borrowRate:0.000005
     Assert Equal (CToken cBAT BorrowBalance Geoff) 1e18
     Assert Equal (CToken cBAT TotalBorrowsCurrent) 1e18
@@ -125,14 +125,16 @@ Test "Repay successfully even the market has been delisted"
     FastForward 300000 Blocks -- 1e18 * (1 + 300000 * 0.000005)
     Assert Equal (CToken cBAT BorrowBalance Geoff) 2.5e18
     -- Now let's repay fully
+    AllowFailures
     Prep Geoff 10e18 BAT cBAT
     Expect Changes (Erc20 BAT TokenBalance Geoff) Zero
     Expect Changes (Erc20 BAT TokenBalance cBAT) Zero
-    Comptroller UnList cBAT -- Mock unlist BAT
-    RepayBorrow Geoff 2.5e18 cBAT
+    Comptroller UnList cZRX -- Mock unlist ZRX
+    RepayBorrow Geoff 2.5e18 cZRX
+    Assert Revert "revert market not listed"
     -- Let's check the overall numbers
-    Assert Equal (CToken cBAT BorrowBalance Geoff) 0
-    Assert Equal (CToken cBAT TotalBorrowsCurrent) 0
+    Assert Equal (CToken cBAT BorrowBalance Geoff) 2.5e18
+    Assert Equal (CToken cBAT TotalBorrowsCurrent) 2.5e18
 
 Test "Prohibit repay by comptroller for cannot repay on behalf of a credit account"
     NewComptroller price:1.0

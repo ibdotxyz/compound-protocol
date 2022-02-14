@@ -240,7 +240,6 @@ describe('Comptroller', () => {
 
   describe('_delistMarket', () => {
     const version = 0;
-    const cf = etherMantissa(0.5);
 
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken(root);
@@ -248,15 +247,16 @@ describe('Comptroller', () => {
     });
 
     it("fails if market not listed", async () => {
-      const comptroller = await makeComptroller();
+      const comptroller = await makeComptroller()
       const asset = await makeToken(root);
       await expect(send(comptroller, '_delistMarket', [asset._address])).rejects.toRevert('revert market not listed');
     });
 
-    it("fails if market has collateral", async () => {
-      const cToken = await makeCToken({supportMarket: true, underlyingPrice: 1});
-      expect(await send(cToken.comptroller, '_setCollateralFactor', [cToken._address, cf])).toSucceed();
-      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address])).rejects.toRevert('revert market has collateral');
+    it("fails if market not empty", async () => {
+      const cToken = await makeCToken(root);
+      expect(await send(cToken.comptroller, '_supportMarket', [cToken._address, version])).toSucceed();
+      await send(cToken, 'harnessSetTotalSupply', [1]);
+      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address])).rejects.toRevert('revert market not empty');
     });
 
     it("succeeds and delists market", async () => {
