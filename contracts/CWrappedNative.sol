@@ -305,6 +305,24 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         return true;
     }
 
+    /**
+     * @dev CWrappedNative doesn't have the collateral cap functionality. Return the supply cap for
+     * interface consistency.
+     * @return the supply cap of this market
+     */
+    function collateralCap() external view returns (uint256) {
+        return ComptrollerInterfaceExtension(address(comptroller)).supplyCaps(address(this));
+    }
+
+    /**
+     * @dev CWrappedNative doesn't have the collateral cap functionality. Return the total supply for
+     * interface consistency.
+     * @return the total supply of this market
+     */
+    function totalCollateralTokens() external view returns (uint256) {
+        return totalSupply;
+    }
+
     function() external payable {
         require(msg.sender == underlying, "only wrapped native contract could send native token");
     }
