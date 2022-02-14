@@ -323,7 +323,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
-        require(isMarketListed(cToken), "market not listed");
+        require(isMarketListed(cToken) || isMarkertDelisted[cToken], "market not listed");
         require(!isCreditAccount(redeemer, cToken), "credit account cannot redeem");
 
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
@@ -463,7 +463,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Shh - currently unused
         repayAmount;
 
-        require(isMarketListed(cToken), "market not listed");
+        require(isMarketListed(cToken) || isMarkertDelisted[cToken], "market not listed");
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
@@ -853,6 +853,11 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
+            // Skip the asset if it is not listed.
+            if (!isMarketListed(address(asset))) {
+                continue;
+            }
+
             // Read the balances and exchange rate from the cToken
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(
                 account
@@ -1089,10 +1094,11 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function _delistMarket(CToken cToken) external {
         require(msg.sender == admin, "admin only");
         require(isMarketListed(address(cToken)), "market not listed");
-        require(cToken.totalSupply() == 0, "market not empty");
+        require(markets[address(cToken)].collateralFactorMantissa == 0, "market has collateral");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
+        isMarkertDelisted[address(cToken)] = true;
         delete markets[address(cToken)];
 
         for (uint256 i = 0; i < allMarkets.length; i++) {

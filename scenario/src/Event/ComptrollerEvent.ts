@@ -111,7 +111,7 @@ async function supportMarket(world: World, from: string, comptroller: Comptrolle
 }
 
 async function unlistMarket(world: World, from: string, comptroller: Comptroller, cToken: CToken): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods.unlist(cToken._address), from, ComptrollerErrorReporter);
+  let invokation = await invoke(world, comptroller.methods._delistMarket(cToken._address), from, ComptrollerErrorReporter);
 
   world = addAction(
     world,
