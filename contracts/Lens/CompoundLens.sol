@@ -68,6 +68,9 @@ contract CompoundLens is Exponential {
         if (version == ComptrollerV2Storage.Version.COLLATERALCAP) {
             collateralCap = CCollateralCapErc20Interface(address(cToken)).collateralCap();
             totalCollateralTokens = CCollateralCapErc20Interface(address(cToken)).totalCollateralTokens();
+        } else if (version == ComptrollerV2Storage.Version.WRAPPEDNATIVE) {
+            collateralCap = CWrappedNativeInterface(address(cToken)).collateralCap();
+            totalCollateralTokens = CWrappedNativeInterface(address(cToken)).totalCollateralTokens();
         }
 
         return
