@@ -220,6 +220,27 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         return markets[cTokenAddress].isListed;
     }
 
+    /**
+     * @notice Return the credit limit of a specific protocol
+     * @dev This function shouldn't be called. It exists only for backward compatibility.
+     * @param protocol The address of the protocol
+     * @return The credit
+     */
+    function creditLimits(address protocol) public view returns (uint256) {
+        protocol; // Shh
+        return 0;
+    }
+
+    /**
+     * @notice Return the credit limit of a specific protocol for a specific market
+     * @param protocol The address of the protocol
+     * @param market The market
+     * @return The credit
+     */
+    function creditLimits(address protocol, address market) public view returns (uint256) {
+        return _creditLimits[protocol][market];
+    }
+
     /*** Policy Hooks ***/
 
     /**
@@ -319,8 +340,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
-        require(isMarketListed(cToken), "market not listed");
-
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
         if (!markets[cToken].accountMembership[redeemer]) {
             return uint256(Error.NO_ERROR);
@@ -456,8 +475,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     ) external returns (uint256) {
         // Shh - currently unused
         repayAmount;
-
-        require(isMarketListed(cToken), "market not listed");
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
@@ -735,7 +752,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @return The account is a credit account or not
      */
     function isCreditAccount(address account, address cToken) public view returns (bool) {
-        return creditLimits[account][cToken] > 0;
+        return _creditLimits[account][cToken] > 0;
     }
 
     /*** Liquidity/Liquidation Calculations ***/
@@ -868,6 +885,11 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
+            // Skip the asset if it is not listed.
+            if (!isMarketListed(address(asset))) {
+                continue;
+            }
+
             // Read the balances and exchange rate from the cToken
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(
                 account
@@ -875,7 +897,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             require(oErr == 0, "snapshot error");
 
             // Once a market's credit limit is set, the account's collateral won't be considered anymore.
-            uint256 creditLimit = creditLimits[account][address(asset)];
+            uint256 creditLimit = _creditLimits[account][address(asset)];
             if (creditLimit > 0) {
                 // The market's credit limit should be always greater than its borrow balance and the borrow balance won't be added to sumBorrowPlusEffects.
                 require(creditLimit >= vars.borrowBalance, "insufficient credit limit");
@@ -1120,7 +1142,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function _delistMarket(CToken cToken) external {
         require(msg.sender == admin, "admin only");
         require(isMarketListed(address(cToken)), "market not listed");
-        require(cToken.totalSupply() == 0, "market not empty");
+        require(markets[address(cToken)].collateralFactorMantissa == 0, "market has collateral");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
@@ -1329,7 +1351,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(msg.sender == admin, "only admin can set protocol credit limit");
         require(addToMarketInternal(CToken(market), protocol) == Error.NO_ERROR, "invalid market");
 
-        creditLimits[protocol][market] = creditLimit;
+        _creditLimits[protocol][market] = creditLimit;
         emit CreditLimitChanged(protocol, market, creditLimit);
     }
 
