@@ -180,6 +180,39 @@ describe('CompoundLens', () => {
         }
       );
     });
+
+    it('is correct for a cWrappedNative with supply cap', async () => {
+      let cWrappedNative = await makeCToken({kind: 'cwrapped', supportMarket: true});
+      await send(cWrappedNative.comptroller, '_setMarketSupplyCaps', [[cWrappedNative._address], [100]]);
+      expect(
+        cullTuple(await call(compoundLens, 'cTokenMetadata', [cWrappedNative._address]))
+      ).toEqual(
+        {
+          cToken: cWrappedNative._address,
+          exchangeRateCurrent: "1000000000000000000",
+          supplyRatePerBlock: "0",
+          borrowRatePerBlock: "0",
+          reserveFactorMantissa: "0",
+          totalBorrows: "0",
+          totalReserves: "0",
+          totalSupply: "0",
+          totalCash: "0",
+          totalCollateralTokens: "0",
+          isListed: true,
+          collateralFactorMantissa: "0",
+          underlyingAssetAddress: await call(cWrappedNative, 'underlying', []),
+          cTokenDecimals: "8",
+          underlyingDecimals: "18",
+          version: "2",
+          collateralCap: "100", // collateralCap equals to supplyCap
+          underlyingPrice: "0",
+          supplyPaused: false,
+          borrowPaused: false,
+          supplyCap: "100",
+          borrowCap: "0"
+        }
+      );
+    });
   });
 
   describe('cTokenMetadataAll', () => {

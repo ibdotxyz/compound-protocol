@@ -302,8 +302,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
-        require(isMarketListed(cToken), "market not listed");
-
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
         if (!markets[cToken].accountMembership[redeemer]) {
             return uint256(Error.NO_ERROR);
@@ -433,8 +431,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     ) external returns (uint256) {
         // Shh - currently unused
         repayAmount;
-
-        require(isMarketListed(cToken), "market not listed");
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
@@ -824,6 +820,11 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
+            // Skip the asset if it is not listed.
+            if (!isMarketListed(address(asset))) {
+                continue;
+            }
+
             // Read the balances and exchange rate from the cToken
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(
                 account
@@ -1076,7 +1077,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function _delistMarket(CToken cToken) external {
         require(msg.sender == admin, "admin only");
         require(isMarketListed(address(cToken)), "market not listed");
-        require(cToken.totalSupply() == 0, "market not empty");
+        require(markets[address(cToken)].collateralFactorMantissa == 0, "market has collateral");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 

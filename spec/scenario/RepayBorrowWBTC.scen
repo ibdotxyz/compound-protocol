@@ -117,7 +117,7 @@ Test "Borrow, hold a few blocks, and repay behalf part"
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 3e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 3e8
 
-Test "Prohibit repay by comptroller rejection due to mock unlist"
+Test "Repay successfully even the market has been delisted"
     NewBorrow borrowAmount:1e8 borrowRate:0.000005
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 1e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 1e8
@@ -125,16 +125,15 @@ Test "Prohibit repay by comptroller rejection due to mock unlist"
     FastForward 300000 Blocks -- 0.001e8 * (1 + 300000 * 0.000005)
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 2.5e8
     -- Now let's repay fully
-    AllowFailures
-    Prep Geoff 10e8 WBTC cWBTC
+    Give Geoff 1.5e8 WBTC -- Geoff had the 1.0e8 borrowed WBTC
+    From Geoff (Erc20 WBTC Approve cWBTC 2.5e8)
     Expect Changes (Erc20 WBTC TokenBalance Geoff) Zero
     Expect Changes (Erc20 WBTC TokenBalance cWBTC) Zero
-    Comptroller UnList cZRX -- Mock unlist ZRX
-    RepayBorrow Geoff 2.5e8 cZRX
-    Assert Revert "revert market not listed"
+    Comptroller UnList cWBTC -- Mock unlist WBTC
+    RepayBorrow Geoff 2.5e8 cWBTC
     -- Let's check the overall numbers
-    Assert Equal (CToken cWBTC BorrowBalance Geoff) 2.5e8
-    Assert Equal (CToken cWBTC TotalBorrowsCurrent) 2.5e8
+    Assert Equal (CToken cWBTC BorrowBalance Geoff) 0
+    Assert Equal (CToken cWBTC TotalBorrowsCurrent) 0
 
 Test "Borrow WBTC, can't repay when paused"
     NewBorrow borrowAmount:1e8 borrowRate:0.000005
