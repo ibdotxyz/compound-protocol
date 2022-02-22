@@ -97,7 +97,7 @@ Test "Borrow, and get a negative total cash situation"
     Assert Equal (CToken cETH BorrowBalance Geoff) 0.049e18
     Assert Equal (CToken cETH TotalBorrowsCurrent) 0.049e18
 
-Test "Prohibit repay by comptroller hook"
+Test "Repay successfully even the market has been delisted"
     NewBorrowEth borrowAmount:0.001e18 borrowRate:0.000005
     Assert Equal (CToken cETH BorrowBalance Geoff) 0.001e18
     Assert Equal (CToken cETH TotalBorrowsCurrent) 0.001e18
@@ -107,10 +107,9 @@ Test "Prohibit repay by comptroller hook"
     -- Now let's repay one full token
     Expect Changes (EtherBalance Geoff) Zero
     Expect Changes (EtherBalance cETH) Zero
-    Comptroller UnList cETH -- Mock unlist cETH
-    AllowFailures
+    SetCollateralFactor cETH 0 -- Clear collateral factor
+    Comptroller UnList cETH -- Delist cETH
     RepayBorrowEth Geoff 0.001e18 cETH
-    Assert Revert "revert market not listed"
     ---- Let's check the overall numbers
-    Assert Equal (CToken cETH BorrowBalance Geoff) 0.0025e18
-    Assert Equal (CToken cETH TotalBorrowsCurrent) 0.0025e18
+    Assert Equal (CToken cETH BorrowBalance Geoff) 0.0015e18
+    Assert Equal (CToken cETH TotalBorrowsCurrent) 0.0015e18

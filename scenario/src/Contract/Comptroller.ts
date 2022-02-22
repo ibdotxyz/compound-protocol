@@ -30,6 +30,7 @@ interface ComptrollerMethods {
   _setPendingImplementation(string): Sendable<number>
   comptrollerImplementation(): Callable<string>
   unlist(string): Sendable<void>
+  _delistMarket(market: string): Sendable<void>
   admin(): Callable<string>
   pendingAdmin(): Callable<string>
   _setPendingAdmin(string): Sendable<number>
