@@ -53,9 +53,9 @@ Test "Mint, Enter, Borrow, SetCreditLimit and then Redeem All"
     -- Set credit limit
     Comptroller SetCreditLimit Geoff cBAT 10000e18
     -- Redeem all
+    AllowFailures
     Redeem Geoff 1000e8 cZRX
-    Assert Equal (Erc20 cZRX TokenBalance Geoff) Zero
-    Assert Equal (Erc20 ZRX TokenBalance Geoff) 100e18
+    Assert Revert "revert insufficient liquidity"
 
 Test "Mint then Redeem Part"
     NewComptroller
@@ -253,3 +253,11 @@ Test "Mint, Enter, then Redeem Too Much (collateral factor: 0.1)"
     AllowFailures
     Redeem Geoff 501e8 cZRX
     Assert Revert "revert insufficient liquidity"
+
+Test "Redeem reverts if it's a credit account"
+    NewComptroller
+    ListedCToken ZRX cZRX initialExchangeRate:1e9
+    Comptroller SetCreditLimit Geoff cZRX 100e18
+    AllowFailures
+    Redeem Geoff 10e18 cZRX
+    Assert Revert "revert credit account cannot redeem"

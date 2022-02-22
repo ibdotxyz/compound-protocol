@@ -339,6 +339,7 @@ Test "When seize not allowed due to unlisted collateral"
     Invariant Remains (CToken cBAT TotalBorrows) 101e18
     -- Okay, so we should be able to liquidate, so let's do that.
     Prep Torrey 10e18 BAT cBAT
+    SetCollateralFactor cBAT 0 -- Clear collateral factor
     Comptroller UnList cBAT -- Mock unlist collateral
     AllowFailures
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT
@@ -367,6 +368,7 @@ Test "When seize not allowed due to unlisted borrow"
     Invariant Remains (CToken cBAT TotalBorrows) 101e18
     -- Okay, so we should be able to liquidate, so let's do that.
     Prep Torrey 10e18 BAT cBAT
+    SetCollateralFactor cBAT 0 -- Clear collateral factor
     Comptroller UnList cBAT -- Mock unlist borrow
     AllowFailures
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT
