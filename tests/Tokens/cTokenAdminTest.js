@@ -38,13 +38,91 @@ describe('CTokenAdmin', () => {
     });
   });
 
-  describe('_setPendingAdmin()', () => {
+  describe('_queuePendingAdmin()', () => {
     beforeEach(async () => {
       cToken = await makeCToken({admin: cTokenAdmin._address});
     });
 
     it('should only be callable by admin', async () => {
-      await expect(send(cTokenAdmin, '_setPendingAdmin', [cToken._address, others], {from: others})).rejects.toRevert('revert only the admin may call this function');
+      await expect(send(cTokenAdmin, '_queuePendingAdmin', [cToken._address, others], {from: others})).rejects.toRevert('revert only the admin may call this function');
+
+      // Check admin stays the same
+      expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
+      expect(await call(cToken, 'pendingAdmin')).toBeAddressZero();
+    });
+
+    it('should properly queue pending admin', async () => {
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_queuePendingAdmin', [cToken._address, others], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'adminQueue', [cToken._address, others])).toEqual('172900'); // 100 + 86400
+
+      await expect(send(cTokenAdmin, '_queuePendingAdmin', [cToken._address, others], {from: admin})).rejects.toRevert('revert already in queue');
+
+      // Check admin and pending admin stay the same
+      expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
+      expect(await call(cToken, 'pendingAdmin')).toBeAddressZero();
+    });
+  });
+
+  describe('_clearPendingAdmin()', () => {
+    beforeEach(async () => {
+      cToken = await makeCToken({admin: cTokenAdmin._address});
+    });
+
+    it('should only be callable by admin', async () => {
+      await expect(send(cTokenAdmin, '_clearPendingAdmin', [cToken._address, others], {from: others})).rejects.toRevert('revert only the admin may call this function');
+
+      // Check admin stays the same
+      expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
+      expect(await call(cToken, 'pendingAdmin')).toBeAddressZero();
+    });
+
+    it('should properly clear pending admin', async () => {
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_clearPendingAdmin', [cToken._address, others], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'adminQueue', [cToken._address, others])).toEqual('0');
+
+      // Check admin and pending admin stay the same
+      expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
+      expect(await call(cToken, 'pendingAdmin')).toBeAddressZero();
+    });
+  });
+
+  describe('_togglePendingAdmin()', () => {
+    beforeEach(async () => {
+      cToken = await makeCToken({admin: cTokenAdmin._address});
+    });
+
+    it('should only be callable by admin', async () => {
+      await expect(send(cTokenAdmin, '_togglePendingAdmin', [cToken._address, others], {from: others})).rejects.toRevert('revert only the admin may call this function');
+
+      // Check admin stays the same
+      expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
+      expect(await call(cToken, 'pendingAdmin')).toBeAddressZero();
+    });
+
+    it('cannot be toggled if not in queue', async () => {
+      await expect(send(cTokenAdmin, '_togglePendingAdmin', [cToken._address, others], {from: admin})).rejects.toRevert('revert not in queue');
+
+      // Check admin stays the same
+      expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
+      expect(await call(cToken, 'pendingAdmin')).toBeAddressZero();
+    });
+
+    it('cannot be toggled if queue not expired', async () => {
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_queuePendingAdmin', [cToken._address, others], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'adminQueue', [cToken._address, others])).toEqual('172900'); // 100 + 86400
+
+      await send(cTokenAdmin, 'setBlockTimestamp', [86499]);
+
+      await expect(send(cTokenAdmin, '_togglePendingAdmin', [cToken._address, others], {from: admin})).rejects.toRevert('revert queue not expired');
 
       // Check admin stays the same
       expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
@@ -52,7 +130,17 @@ describe('CTokenAdmin', () => {
     });
 
     it('should properly set pending admin', async () => {
-      expect(await send(cTokenAdmin, '_setPendingAdmin', [cToken._address, others], {from: admin})).toSucceed();
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_queuePendingAdmin', [cToken._address, others], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'adminQueue', [cToken._address, others])).toEqual('172900'); // 100 + 86400
+
+      await send(cTokenAdmin, 'setBlockTimestamp', [172900]);
+
+      expect(await send(cTokenAdmin, '_togglePendingAdmin', [cToken._address, others], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'adminQueue', [cToken._address, others])).toEqual('0');
 
       // Check admin stays the same
       expect(await call(cToken, 'admin')).toEqual(cTokenAdmin._address);
@@ -200,20 +288,106 @@ describe('CTokenAdmin', () => {
     });
   });
 
-  describe('_setImplementation()', () => {
+  describe('_queuePendingImplementation()', () => {
+    let oldImplementation;
     let cCapableDelegate;
 
     beforeEach(async () => {
       cToken = await makeCToken({admin: cTokenAdmin._address});
+      oldImplementation = await call(cToken, 'implementation');
       cCapableDelegate = await deploy('CCapableErc20Delegate');
     });
 
     it('should only be callable by admin', async () => {
-      await expect(send(cTokenAdmin, '_setImplementation', [cToken._address, cCapableDelegate._address, true, '0x0'], {from: others})).rejects.toRevert('revert only the admin may call this function');
+      await expect(send(cTokenAdmin, '_queuePendingImplementation', [cToken._address, cCapableDelegate._address], {from: others})).rejects.toRevert('revert only the admin may call this function');
+    });
+
+    it('should succeed and queue new implementation', async () => {
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_queuePendingImplementation', [cToken._address, cCapableDelegate._address], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'implementationQueue', [cToken._address, cCapableDelegate._address])).toEqual('172900'); // 100 + 86400
+
+      await expect(send(cTokenAdmin, '_queuePendingImplementation', [cToken._address, cCapableDelegate._address], {from: admin})).rejects.toRevert('revert already in queue');
+
+      expect(await call(cToken, 'implementation')).toEqual(oldImplementation);
+    });
+  });
+
+  describe('_clearPendingImplementation()', () => {
+    let oldImplementation;
+    let cCapableDelegate;
+
+    beforeEach(async () => {
+      cToken = await makeCToken({admin: cTokenAdmin._address});
+      oldImplementation = await call(cToken, 'implementation');
+      cCapableDelegate = await deploy('CCapableErc20Delegate');
+    });
+
+    it('should only be callable by admin', async () => {
+      await expect(send(cTokenAdmin, '_clearPendingImplementation', [cToken._address, cCapableDelegate._address], {from: others})).rejects.toRevert('revert only the admin may call this function');
+    });
+
+    it('should succeed and clear new implementation', async () => {
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_clearPendingImplementation', [cToken._address, cCapableDelegate._address], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'implementationQueue', [cToken._address, cCapableDelegate._address])).toEqual('0');
+
+      expect(await call(cToken, 'implementation')).toEqual(oldImplementation);
+    });
+  });
+
+  describe('_togglePendingImplementation()', () => {
+    let oldImplementation;
+    let cCapableDelegate;
+
+    beforeEach(async () => {
+      cToken = await makeCToken({admin: cTokenAdmin._address});
+      oldImplementation = await call(cToken, 'implementation');
+      cCapableDelegate = await deploy('CCapableErc20Delegate');
+    });
+
+    it('should only be callable by admin', async () => {
+      await expect(send(cTokenAdmin, '_togglePendingImplementation', [cToken._address, cCapableDelegate._address, true, '0x0'], {from: others})).rejects.toRevert('revert only the admin may call this function');
+
+      expect(await call(cToken, 'implementation')).toEqual(oldImplementation);
+    });
+
+    it('cannot be toggled if not in queue', async () => {
+      await expect(send(cTokenAdmin, '_togglePendingImplementation', [cToken._address, cCapableDelegate._address, true, '0x0'], {from: admin})).rejects.toRevert('revert not in queue');
+
+      expect(await call(cToken, 'implementation')).toEqual(oldImplementation);
+    });
+
+    it('cannot be toggled if queue not expired', async () => {
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_queuePendingImplementation', [cToken._address, cCapableDelegate._address], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'implementationQueue', [cToken._address, cCapableDelegate._address])).toEqual('172900'); // 100 + 86400
+
+      await send(cTokenAdmin, 'setBlockTimestamp', [86499]);
+
+      await expect(send(cTokenAdmin, '_togglePendingImplementation', [cToken._address, cCapableDelegate._address, true, '0x0'], {from: admin})).rejects.toRevert('revert queue not expired');
+
+      expect(await call(cToken, 'implementation')).toEqual(oldImplementation);
     });
 
     it('should succeed and set new implementation', async () => {
-      expect(await send(cTokenAdmin, '_setImplementation', [cToken._address, cCapableDelegate._address, true, '0x0'], {from: admin})).toSucceed();
+      await send(cTokenAdmin, 'setBlockTimestamp', [100]);
+
+      expect(await send(cTokenAdmin, '_queuePendingImplementation', [cToken._address, cCapableDelegate._address], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'implementationQueue', [cToken._address, cCapableDelegate._address])).toEqual('172900'); // 100 + 86400
+
+      await send(cTokenAdmin, 'setBlockTimestamp', [172900]);
+
+      expect(await send(cTokenAdmin, '_togglePendingImplementation', [cToken._address, cCapableDelegate._address, true, '0x0'], {from: admin})).toSucceed();
+
+      expect(await call(cTokenAdmin, 'implementationQueue', [cToken._address, cCapableDelegate._address])).toEqual('0');
 
       expect(await call(cToken, 'implementation')).toEqual(cCapableDelegate._address);
     });
