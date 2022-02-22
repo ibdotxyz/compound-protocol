@@ -87,41 +87,6 @@ describe('Comptroller', () => {
       expect(liquidity).toEqualNumber(Math.floor(c2));
       expect(shortfall).toEqualNumber(0);
     });
-
-    it("has account liquidity with credit limit", async () => {
-      const collateralFactor = 0.5, underlyingPrice = 1, user = accounts[1], amount = 1e6, creditLimit = 500, collateral = amount * collateralFactor * underlyingPrice;
-      const cToken = await makeCToken({supportMarket: true, collateralFactor, underlyingPrice});
-      let error, liquidity, shortfall;
-
-      await enterMarkets([cToken], user);
-      await quickMint(cToken, user, amount);
-
-      ({0: error, 1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getAccountLiquidity', [user]));
-      expect(error).toEqualNumber(0);
-      expect(liquidity).toEqualNumber(collateral);
-      expect(shortfall).toEqualNumber(0);
-
-      // When credit limit is set, the collateral of this market is not counted.
-      await send(cToken.comptroller, '_setCreditLimit', [user, cToken._address, creditLimit]);
-
-      ({1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getHypotheticalAccountLiquidity', [user, cToken._address, 0, 200]));
-      expect(liquidity).toEqualNumber(0);
-      expect(shortfall).toEqualNumber(0);
-
-      ({1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getHypotheticalAccountLiquidity', [user, cToken._address, 0, 500]));
-      expect(liquidity).toEqualNumber(0);
-      expect(shortfall).toEqualNumber(0);
-
-      await expect(call(cToken.comptroller, 'getHypotheticalAccountLiquidity', [user, cToken._address, 0, 501])).rejects.toRevert('revert insufficient credit limit');
-
-      // Reset the credit limit.
-      await send(cToken.comptroller, '_setCreditLimit', [user, cToken._address, 0]);
-
-      ({0: error, 1: liquidity, 2: shortfall} = await call(cToken.comptroller, 'getAccountLiquidity', [user]));
-      expect(error).toEqualNumber(0);
-      expect(liquidity).toEqualNumber(collateral);
-      expect(shortfall).toEqualNumber(0);
-    })
   });
 
   describe("getAccountLiquidity", () => {
