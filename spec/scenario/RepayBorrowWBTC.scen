@@ -129,7 +129,8 @@ Test "Repay successfully even the market has been delisted"
     From Geoff (Erc20 WBTC Approve cWBTC 2.5e8)
     Expect Changes (Erc20 WBTC TokenBalance Geoff) Zero
     Expect Changes (Erc20 WBTC TokenBalance cWBTC) Zero
-    Comptroller UnList cWBTC -- Mock unlist WBTC
+    SetCollateralFactor cWBTC 0 -- Clear collateral factor
+    Comptroller UnList cWBTC -- Delist WBTC
     RepayBorrow Geoff 2.5e8 cWBTC
     -- Let's check the overall numbers
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 0

@@ -348,7 +348,7 @@ async function makeCTokenAdmin(opts = {}) {
   } = opts || {};
 
   const admin = opts.admin || root;
-  return await deploy('CTokenAdmin', [admin]);
+  return await deploy('MockCTokenAdmin', [admin]);
 }
 
 async function makeToken(opts = {}) {

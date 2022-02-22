@@ -220,7 +220,7 @@ describe('Comptroller', () => {
 
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert only admin can set protocol credit limit");
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert admin only");
     });
 
     it("fails for invalid market", async () => {
@@ -233,8 +233,8 @@ describe('Comptroller', () => {
       const result = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit]);
       expect(result).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: creditLimit.toString()});
 
-      const assetsIn = await call(cToken.comptroller, 'getAssetsIn', [accounts[0]]);
-      expect(assetsIn).toEqual([cToken._address]);
+      const _creditLimit = await call(cToken.comptroller, 'creditLimits', [accounts[0], cToken._address]);
+      expect(_creditLimit).toEqual(creditLimit.toString());
     });
   });
 
