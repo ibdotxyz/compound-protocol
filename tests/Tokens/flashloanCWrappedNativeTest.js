@@ -32,6 +32,7 @@ describe('Flashloan test', function () {
     await send(cToken, 'harnessSetReserveFactorFresh', [etherMantissa(reservesFactor)]);
 
     await send(cToken.underlying, 'harnessSetBalance', [flashloanReceiver._address, receiverBalance]);
+    await send(cToken, '_setFlashloanLender', [flashloanLender._address]);
   });
 
   describe('internal cash equal underlying balance', () => {
@@ -126,6 +127,7 @@ describe('Flashloan re-entry test', () => {
     await send(cToken.underlying, 'harnessSetBalance', [cToken._address, cash]);
     await send(cToken, 'harnessSetBlockNumber', [etherUnsigned(1e6)]);
     await send(cToken, 'harnessSetAccrualBlockNumber', [etherUnsigned(1e6)]);
+    await send(cToken, '_setFlashloanLender', [flashloanLender._address]);
   });
 
   it('flashloan and mint', async () => {
