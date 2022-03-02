@@ -220,6 +220,16 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
     }
 
     /**
+     * @notice Set the flash loan lender.
+     * @param lender The flash loan lender which is the only caller could call flashloan
+     */
+    function _setFlashloanLender(address lender) external {
+        require(msg.sender == admin, "admin only");
+
+        flashloanLender = lender;
+    }
+
+    /**
      * @notice Get the max flash loan amount
      */
     function maxFlashLoan() external view returns (uint256) {
@@ -259,6 +269,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         bytes calldata data
     ) external nonReentrant returns (bool) {
         require(amount > 0, "invalid flashloan amount");
+        require(msg.sender == flashloanLender, "flashloan lender only");
         accrueInterest();
         require(
             ComptrollerInterfaceExtension(address(comptroller)).flashloanAllowed(
