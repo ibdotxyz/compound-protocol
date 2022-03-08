@@ -95,7 +95,7 @@ describe('Flashloan test', function () {
       const borrowAmount = cash + 1;
       const totalFee = 3;
       const result = send(flashloanReceiver, 'doFlashloan', [cToken._address, borrowAmount, borrowAmount + totalFee]);
-      await expect(result).rejects.toRevert('revert INSUFFICIENT_LIQUIDITY');
+      await expect(result).rejects.toRevert('revert insufficient cash');
     })
   });
 
