@@ -27,8 +27,6 @@ contract CErc20Delegate is CErc20, CDelegateInterface {
         }
 
         require(msg.sender == admin, "only the admin may call _becomeImplementation");
-
-        _seizeTokensForVictims();
     }
 
     /**
@@ -41,39 +39,5 @@ contract CErc20Delegate is CErc20, CDelegateInterface {
         }
 
         require(msg.sender == admin, "only the admin may call _resignImplementation");
-    }
-
-    function _seizeTokensForVictims() internal {
-        // We've paused the supply of cySUSD, should be only 2 victims.
-        address payable[2] memory victims = [0x431e81E5dfB5A24541b5Ff8762bDEF3f32F96354, 0x23f6ce52eef00F76b7770Bd88d39F2156662f6C6];
-        uint[] memory payments = new uint[](2);
-        uint sUSDAmount;
-
-        require(accrueInterest() == uint(Error.NO_ERROR), "accrue interest failed");
-        uint exchangeRate = exchangeRateStoredInternal();
-
-        for (uint i = 0; i < victims.length; i++) {
-            // Get the victim's cySUSD balance.
-            uint cySUSDBalance = accountTokens[victims[i]];
-
-            // Calculate the sUSD amount the victim should get.
-            payments[i] = mul_ScalarTruncate(Exp({mantissa: exchangeRate}), cySUSDBalance);
-            sUSDAmount = add_(sUSDAmount, payments[i]);
-
-            require(comptroller.redeemAllowed(address(this), victims[i], cySUSDBalance) == uint(Error.NO_ERROR), "comptroller not allowed");
-
-            // Update the victim's cySUSD balance and total supply.
-            totalSupply = sub_(totalSupply, cySUSDBalance);
-            accountTokens[victims[i]] = 0;
-        }
-
-        // Get total sUSD amount from cream multisig address.
-        EIP20Interface sUSD = EIP20Interface(underlying);
-        sUSD.transferFrom(creamMultisig, address(this), sUSDAmount);
-
-        // Distribute the funds to the victims.
-        for (uint i = 0; i < victims.length; i++) {
-            sUSD.transfer(victims[i], payments[i]);
-        }
     }
 }

@@ -15,9 +15,9 @@ import "./InterestRateModel.sol";
  */
 contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
     /**
-     * @notice Cream multisig address holds some sUSD to repay the victims and it's the only liquidator.
+     * @notice IB multisig is the only liquidator.
      */
-    address public constant creamMultisig = 0x6D5a7597896A703Fe8c85775B23395a48f971305;
+    address public constant ibMultisig = 0xA5fC0BbfcD05827ed582869b7254b6f141BA84Eb;
 
     /**
      * @notice Initialize the money market
@@ -910,7 +910,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seizeInternal(address seizerToken, address liquidator, address borrower, uint seizeTokens) internal returns (uint) {
-        require(liquidator == creamMultisig, "only cream multisig address could seize cySUSD");
+        require(liquidator == ibMultisig, "only ib multisig address could seize cySUSD");
 
         /* Fail if seize not allowed */
         uint allowed = comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens);
