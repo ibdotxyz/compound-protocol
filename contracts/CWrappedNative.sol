@@ -277,7 +277,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
             "flashloan is paused"
         );
         uint256 cashBefore = getCashPrior();
-        require(cashBefore >= amount, "INSUFFICIENT_LIQUIDITY");
+        require(cashBefore >= amount, "insufficient cash");
 
         // 1. calculate fee, 1 bips = 1/10000
         uint256 totalFee = _flashFee(token, amount);
@@ -301,7 +301,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         doTransferIn(address(receiver), repaymentAmount, false);
 
         uint256 cashAfter = getCashPrior();
-        require(cashAfter == add_(cashBefore, totalFee), "BALANCE_INCONSISTENT");
+        require(cashAfter == add_(cashBefore, totalFee), "inconsistent balance");
 
         // 6. update totalReserves and totalBorrows
         uint256 reservesFee = mul_ScalarTruncate(Exp({mantissa: reserveFactorMantissa}), totalFee);
