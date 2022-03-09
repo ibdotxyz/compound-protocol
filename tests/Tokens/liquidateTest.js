@@ -104,7 +104,7 @@ describe('CToken', function () {
     });
 
     it("fails if repayAmount = 0", async () => {
-      await expect(liquidateFresh(cToken, liquidator, borrower, 0, cTokenCollateral)).rejects.toRevert('revert invalid close amount requested');
+      await expect(liquidateFresh(cToken, liquidator, borrower, 0, cTokenCollateral)).rejects.toRevert('revert invalid amount');
     });
 
     it("fails if calculating seize tokens fails and does not adjust balances", async () => {
@@ -112,7 +112,7 @@ describe('CToken', function () {
       await send(cToken.comptroller, 'setFailCalculateSeizeTokens', [true]);
       await expect(
         liquidateFresh(cToken, liquidator, borrower, repayAmount, cTokenCollateral)
-      ).rejects.toRevert('revert failed to calculate seize amount');
+      ).rejects.toRevert('revert calculate seize amount failed');
       const afterBalances = await getBalances([cToken, cTokenCollateral], [liquidator, borrower]);
       expect(afterBalances).toEqual(beforeBalances);
     });
@@ -183,7 +183,7 @@ describe('CToken', function () {
     });
 
     it("returns error from liquidateBorrowFresh without emitting any extra logs", async () => {
-      await expect(liquidate(cToken, liquidator, borrower, 0, cTokenCollateral)).rejects.toRevert('revert invalid close amount requested');
+      await expect(liquidate(cToken, liquidator, borrower, 0, cTokenCollateral)).rejects.toRevert('revert invalid amount');
     });
 
     it("returns success from liquidateBorrowFresh and transfers the correct amounts", async () => {

@@ -69,6 +69,9 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /// @notice Emitted when cToken version is changed
     event NewCTokenVersion(CToken cToken, Version oldVersion, Version newVersion);
 
+    /// @notice Emitted when credit limit manager is changed
+    event NewCreditLimitManager(address oldCreditLimitManager, address newCreditLimitManager);
+
     // No collateralFactorMantissa may exceed this value
     uint256 internal constant collateralFactorMaxMantissa = 0.9e18; // 0.9
 
@@ -1209,11 +1212,28 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Save current value for inclusion in log
         address oldLiquidityMining = liquidityMining;
 
-        // Store pauseGuardian with value newLiquidityMining
+        // Store liquidityMining with value newLiquidityMining
         liquidityMining = newLiquidityMining;
 
         // Emit NewLiquidityMining(OldLiquidityMining, NewLiquidityMining)
         emit NewLiquidityMining(oldLiquidityMining, liquidityMining);
+    }
+
+    /**
+     * @notice Admin function to set the credit limit manager address
+     * @param newCreditLimitManager The address of the new credit limit manager
+     */
+    function _setCreditLimitManager(address newCreditLimitManager) external {
+        require(msg.sender == admin, "admin only");
+
+        // Save current value for inclusion in log
+        address oldCreditLimitManager = creditLimitManager;
+
+        // Store creditLimitManager with value newCreditLimitManager
+        creditLimitManager = newCreditLimitManager;
+
+        // Emit NewCreditLimitManager(oldCreditLimitManager, newCreditLimitManager)
+        emit NewCreditLimitManager(oldCreditLimitManager, creditLimitManager);
     }
 
     function _setMintPaused(CToken cToken, bool state) public returns (bool) {
@@ -1280,8 +1300,13 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address market,
         uint256 creditLimit
     ) public {
-        require(msg.sender == admin, "admin only");
+        require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
         require(isMarketListed(market), "market not listed");
+
+        if (creditLimits[protocol][market] == 0 && creditLimit != 0) {
+            // Only admin could set a new credit limit.
+            require(msg.sender == admin, "admin only");
+        }
 
         creditLimits[protocol][market] = creditLimit;
         emit CreditLimitChanged(protocol, market, creditLimit);

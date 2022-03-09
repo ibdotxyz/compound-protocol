@@ -180,7 +180,7 @@ Test "Liquidate exactly zero"
     Prep Torrey 10e18 BAT cBAT
     AllowFailures
     Liquidate Torrey "->" Geoff 0e18 cBAT "Seizing" cBAT
-    Assert Revert "revert invalid close amount requested"
+    Assert Revert "revert invalid amount"
 
 Test "When price oracle for collateral token is zero"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
@@ -404,7 +404,7 @@ Test "When there's insufficient collateral"
     Prep Torrey 900e18 BAT cBAT
     AllowFailures
     Liquidate Torrey "->" Geoff 900e18 cBAT "Seizing" cBAT
-    Assert Revert "revert LIQUIDATE_SEIZE_TOO_MUCH"
+    Assert Revert "revert seize too much"
 
 Test "when seize is paused"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
