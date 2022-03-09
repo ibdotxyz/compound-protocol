@@ -209,7 +209,7 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
         );
         uint256 cashOnChainBefore = getCashOnChain();
         uint256 cashBefore = getCashPrior();
-        require(cashBefore >= amount, "INSUFFICIENT_LIQUIDITY");
+        require(cashBefore >= amount, "insufficient cash");
 
         // 1. calculate fee, 1 bips = 1/10000
         uint256 totalFee = _flashFee(token, amount);
@@ -233,7 +233,7 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
 
         uint256 cashOnChainAfter = getCashOnChain();
 
-        require(cashOnChainAfter == add_(cashOnChainBefore, totalFee), "BALANCE_INCONSISTENT");
+        require(cashOnChainAfter == add_(cashOnChainBefore, totalFee), "inconsistent balance");
 
         // 6. update reserves and internal cash and totalBorrows
         uint256 reservesFee = mul_ScalarTruncate(Exp({mantissa: reserveFactorMantissa}), totalFee);
