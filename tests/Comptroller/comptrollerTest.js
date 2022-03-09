@@ -126,6 +126,28 @@ describe('Comptroller', () => {
     });
   });
 
+  describe('_setCreditLimitManager', () => {
+    let comptroller;
+
+    beforeEach(async () => {
+      comptroller = await makeComptroller();
+    });
+
+    it('fails if called by non-admin', async () => {
+      await expect(send(comptroller, '_setCreditLimitManager', [accounts[0]], {from: accounts[0]})).rejects.toRevert("revert admin only");
+    });
+
+    it("succeeds and emits a NewCreditLimitManager event", async () => {
+      const result = await send(comptroller, '_setCreditLimitManager', [accounts[0]]);
+      expect(result).toSucceed();
+      expect(result).toHaveLog('NewCreditLimitManager', {
+        oldCreditLimitManager: address(0),
+        newCreditLimitManager: accounts[0]
+      });
+      expect(await call(comptroller, 'creditLimitManager')).toEqual(accounts[0]);
+    });
+  });
+
   describe('_setCloseFactor', () => {
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken();
@@ -217,9 +239,17 @@ describe('Comptroller', () => {
 
   describe('_setCreditLimit', () => {
     const creditLimit = etherMantissa(500);
+    const creditLimit2 = etherMantissa(600);
 
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken({supportMarket: true});
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[1]})).rejects.toRevert("revert admin or credit limit manager only");
+    });
+
+    it("fails if set new credit limit by credit limit manager", async () => {
+      const cToken = await makeCToken({supportMarket: true});
+      await send(cToken.comptroller, '_setCreditLimitManager', [accounts[0]]);
+
       await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert admin only");
     });
 
@@ -230,11 +260,20 @@ describe('Comptroller', () => {
 
     it("succeeds and sets credit limit", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      const result = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit]);
-      expect(result).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: creditLimit.toString()});
+      const result1 = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit]);
+      expect(result1).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: creditLimit.toString()});
 
       const _creditLimit = await call(cToken.comptroller, 'creditLimits', [accounts[0], cToken._address]);
       expect(_creditLimit).toEqual(creditLimit.toString());
+
+      // Credit limit manager increases the limit.
+      await send(cToken.comptroller, '_setCreditLimitManager', [accounts[0]]);
+      const result2 = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit2], {from: accounts[0]});
+      expect(result2).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: creditLimit2.toString()});
+
+      // Credit limit manager clears the limit.
+      const result3 = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, 0], {from: accounts[0]});
+      expect(result3).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: 0});
     });
   });
 
