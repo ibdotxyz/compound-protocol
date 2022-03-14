@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/CreamFi/compound-protocol.svg?style=svg)](https://circleci.com/gh/CreamFi/compound-protocol)
+[![CircleCI](https://circleci.com/gh/ibdotxyz/compound-protocol.svg?style=svg)](https://circleci.com/gh/ibdotxyz/compound-protocol)
 
 Iron Bank
 =================
