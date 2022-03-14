@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/ibdotxyz/compound-protocol.svg?style=svg)](https://circleci.com/gh/ibdotxyz/compound-protocol)
+[![CircleCI](https://circleci.com/gh/ibdotxyz/compound-protocol/tree/eth.svg?style=svg)](https://circleci.com/gh/ibdotxyz/compound-protocol/tree/eth)
 
 Iron Bank
 =================
