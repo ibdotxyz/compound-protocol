@@ -31,13 +31,7 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential {
     /// @notice Chainlink Aggregators
     mapping(address => AggregatorInfo) public aggregators;
 
-    /// @notice Mapping of crToken to y-vault token
-    mapping(address => address) public yVaults;
-
-    /// @notice Mapping of crToken to curve swap
-    mapping(address => address) public curveSwap;
-
-    /// @notice The v1 price oracle, maintain by CREAM
+    /// @notice The v1 price oracle, maintain by IB
     V1PriceOracleInterface public v1PriceOracle;
 
     /// @notice The ETH-USD aggregator address
