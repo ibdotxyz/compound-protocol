@@ -1321,12 +1321,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address market,
         uint256 creditLimit
     ) public {
-        require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
+        require(
+            msg.sender == admin || msg.sender == creditLimitManager || msg.sender == pauseGuardian,
+            "admin or credit limit manager or pause guardian only"
+        );
         require(isMarketListed(market), "market not listed");
 
         if (_creditLimits[protocol][market] == 0 && creditLimit != 0) {
-            // Only admin could set a new credit limit.
-            require(msg.sender == admin, "admin only");
+            // Only admin or credit limit manager could set a new credit limit.
+            require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
         }
 
         _creditLimits[protocol][market] = creditLimit;
