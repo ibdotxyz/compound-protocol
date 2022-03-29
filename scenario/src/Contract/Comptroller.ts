@@ -48,11 +48,9 @@ interface ComptrollerMethods {
   mintGuardianPaused(market: string): Callable<boolean>
   borrowGuardianPaused(market: string): Callable<boolean>
   _setMarketSupplyCaps(cTokens:string[], supplyCaps:encodedNumber[]): Sendable<void>
-  _setSupplyCapGuardian(string): Sendable<void>
   supplyCapGuardian(): Callable<string>
   supplyCaps(string): Callable<string>
   _setMarketBorrowCaps(cTokens:string[], borrowCaps:encodedNumber[]): Sendable<void>
-  _setBorrowCapGuardian(string): Sendable<void>
   borrowCapGuardian(): Callable<string>
   borrowCaps(string): Callable<string>
   _setCreditLimit(protocol: string, market: string, creditLimit: encodedNumber): Sendable<void>
