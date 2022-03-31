@@ -6,6 +6,8 @@ import "./PriceOracle.sol";
 import "./interfaces/BandReference.sol";
 import "./interfaces/FeedRegistryInterface.sol";
 import "./interfaces/V1PriceOracleInterface.sol";
+import "./interfaces/WstEthInterface.sol";
+import "./interfaces/WstEthOracleInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
@@ -49,8 +51,14 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /// @notice The BAND reference address
     StdReferenceInterface public ref;
 
+    /// @notice The wstEth oracle address
+    WstEthOracleInterface public wstEthOracle;
+
     /// @notice Quote symbol we used for BAND reference contract
     string public constant QUOTE_SYMBOL = "USD";
+
+    /// @notice The wstEth address
+    address public constant WSTETHADDRESS = address(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
 
     /**
      * @param admin_ The address of admin to set aggregators
@@ -77,6 +85,13 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
      */
     function getUnderlyingPrice(CToken cToken) public view returns (uint256) {
         address underlying = CErc20(address(cToken)).underlying();
+
+        if (underlying == WSTETHADDRESS) {
+            uint256 price = WstEthOracleInterface(wstEthOracle).getPrice();
+            uint256 ethUsdPrice = getPriceFromChainlink(Denominations.ETH, Denominations.USD);
+            price = mul_(price, Exp({mantissa: ethUsdPrice}));
+            return getNormalizedPrice(price, underlying);
+        }
 
         // Get price from ChainLink.
         AggregatorInfo storage aggregatorInfo = aggregators[underlying];
@@ -156,6 +171,7 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     event ReferenceUpdated(address tokenAddress, string symbol, bool isUsed);
     event SetGuardian(address guardian);
     event SetAdmin(address admin);
+    event SetWstEthOracle(address oracle);
 
     /**
      * @notice Set guardian for price oracle proxy
@@ -227,5 +243,16 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
             references[tokenAddresses[i]] = ReferenceInfo({symbol: symbols[i], isUsed: isUsed});
             emit ReferenceUpdated(tokenAddresses[i], symbols[i], isUsed);
         }
+    }
+
+    /**
+     * @notice Set wstEth oracle
+     * @param oracle The oracle address
+     */
+    function _setWstEthOracle(address oracle) external {
+        require(msg.sender == admin, "only the admin may set new wstEth oracle");
+
+        wstEthOracle = WstEthOracleInterface(oracle);
+        emit SetWstEthOracle(oracle);
     }
 }
