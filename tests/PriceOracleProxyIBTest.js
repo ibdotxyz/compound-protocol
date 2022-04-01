@@ -268,4 +268,13 @@ describe('PriceOracleProxyIB', () => {
       expect(reference.isUsed).toEqual(false);
     });
   });
+
+  describe('_setWstEthOracle', () => {
+    it("set wstEth oracle successfully", async () => {
+      expect(await send(oracle, "_setWstEthOracle", [accounts[0]])).toSucceed();
+
+      const wstEthOracle = await call(oracle, "wstEthOracle");
+      expect(wstEthOracle).toEqual(accounts[0]);
+    });
+  });
 });

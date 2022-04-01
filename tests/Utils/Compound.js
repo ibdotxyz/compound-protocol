@@ -489,6 +489,10 @@ async function makeFlashloanReceiver(opts = {}) {
   }
 }
 
+async function makeWstEth() {
+  return await deploy('MockWstEth');
+}
+
 async function balanceOf(token, account) {
   return etherUnsigned(await call(token, 'balanceOf', [account]));
 }
@@ -671,6 +675,7 @@ module.exports = {
   makeEvilAccount,
   makeEvilAccount2,
   makeCTokenAdmin,
+  makeWstEth,
 
   balanceOf,
   collateralTokenBalance,
