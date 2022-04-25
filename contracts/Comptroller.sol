@@ -850,11 +850,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
-            // Skip the asset if it is not listed.
-            if (!isMarketListed(address(asset))) {
-                continue;
-            }
-
             // Read the balances and exchange rate from the cToken
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(
                 account
@@ -1072,6 +1067,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function _supportMarket(CToken cToken, Version version) external returns (uint256) {
         require(msg.sender == admin, "admin only");
         require(!isMarketListed(address(cToken)), "market already listed");
+        require(!isMarkertDelisted[address(cToken)], "market has been delisted");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
