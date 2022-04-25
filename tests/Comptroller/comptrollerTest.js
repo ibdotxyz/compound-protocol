@@ -227,6 +227,14 @@ describe('Comptroller', () => {
       await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed');
     });
 
+    it("cannot list a delisted market", async () => {
+      const cToken = await makeCToken();
+      const result1 = await send(cToken.comptroller, '_supportMarket', [cToken._address, version]);
+      expect(result1).toHaveLog('MarketListed', {cToken: cToken._address});
+      await send(cToken.comptroller, '_delistMarket', [cToken._address]);
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market has been delisted');
+    });
+
     it("can list two different markets", async () => {
       const cToken1 = await makeCToken();
       const cToken2 = await makeCToken({comptroller: cToken1.comptroller});
