@@ -227,6 +227,14 @@ describe('Comptroller', () => {
       await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed');
     });
 
+    it("cannot list a delisted market", async () => {
+      const cToken = await makeCToken();
+      const result1 = await send(cToken.comptroller, '_supportMarket', [cToken._address, version]);
+      expect(result1).toHaveLog('MarketListed', {cToken: cToken._address});
+      await send(cToken.comptroller, '_delistMarket', [cToken._address]);
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market has been delisted');
+    });
+
     it("can list two different markets", async () => {
       const cToken1 = await makeCToken();
       const cToken2 = await makeCToken({comptroller: cToken1.comptroller});
@@ -243,14 +251,14 @@ describe('Comptroller', () => {
 
     it("fails if not called by admin", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[1]})).rejects.toRevert("revert admin or credit limit manager only");
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[1]})).rejects.toRevert("revert admin or credit limit manager or pause guardian only");
     });
 
-    it("fails if set new credit limit by credit limit manager", async () => {
+    it("fails if set new credit limit by guardian", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      await send(cToken.comptroller, '_setCreditLimitManager', [accounts[0]]);
+      await send(cToken.comptroller, '_setPauseGuardian', [accounts[0]]);
 
-      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert admin only");
+      await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert admin or credit limit manager only");
     });
 
     it("fails for invalid market", async () => {

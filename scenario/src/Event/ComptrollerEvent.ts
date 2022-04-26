@@ -316,36 +316,12 @@ async function setMarketSupplyCaps(world: World, from: string, comptroller: Comp
   return world;
 }
 
-async function setSupplyCapGuardian(world: World, from: string, comptroller: Comptroller, newSupplyCapGuardian: string): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods._setSupplyCapGuardian(newSupplyCapGuardian), from, ComptrollerErrorReporter);
-
-  world = addAction(
-      world,
-      `Comptroller: ${describeUser(world, from)} sets supply cap guardian to ${newSupplyCapGuardian}`,
-      invokation
-  );
-
-  return world;
-}
-
 async function setMarketBorrowCaps(world: World, from: string, comptroller: Comptroller, cTokens: CToken[], borrowCaps: NumberV[]): Promise<World> {
   let invokation = await invoke(world, comptroller.methods._setMarketBorrowCaps(cTokens.map(c => c._address), borrowCaps.map(c => c.encode())), from, ComptrollerErrorReporter);
 
   world = addAction(
     world,
     `Borrow caps on ${cTokens} set to ${borrowCaps}`,
-    invokation
-  );
-
-  return world;
-}
-
-async function setBorrowCapGuardian(world: World, from: string, comptroller: Comptroller, newBorrowCapGuardian: string): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods._setBorrowCapGuardian(newBorrowCapGuardian), from, ComptrollerErrorReporter);
-
-  world = addAction(
-    world,
-    `Comptroller: ${describeUser(world, from)} sets borrow cap guardian to ${newBorrowCapGuardian}`,
     invokation
   );
 
@@ -655,19 +631,6 @@ export function comptrollerCommands() {
         ],
         (world, from, {comptroller, cTokens, supplyCaps}) => setMarketSupplyCaps(world, from, comptroller, cTokens, supplyCaps)
     ),
-    new Command<{comptroller: Comptroller, newSupplyCapGuardian: AddressV}>(`
-      #### SetSupplyCapGuardian
-
-        * "Comptroller SetSupplyCapGuardian newSupplyCapGuardian:<Address>" - Sets the Supply Cap Guardian for the Comptroller
-          * E.g. "Comptroller SetSupplyCapGuardian Geoff"
-      `,
-        "SetSupplyCapGuardian",
-        [
-          new Arg("comptroller", getComptroller, {implicit: true}),
-          new Arg("newSupplyCapGuardian", getAddressV)
-        ],
-        (world, from, {comptroller, newSupplyCapGuardian}) => setSupplyCapGuardian(world, from, comptroller, newSupplyCapGuardian.val)
-    ),
     new Command<{comptroller: Comptroller, cTokens: CToken[], borrowCaps: NumberV[]}>(`
       #### SetMarketBorrowCaps
 
@@ -681,19 +644,6 @@ export function comptrollerCommands() {
         new Arg("borrowCaps", getNumberV, {mapped: true})
       ],
       (world, from, {comptroller, cTokens, borrowCaps}) => setMarketBorrowCaps(world, from, comptroller, cTokens, borrowCaps)
-    ),
-    new Command<{comptroller: Comptroller, newBorrowCapGuardian: AddressV}>(`
-        #### SetBorrowCapGuardian
-
-        * "Comptroller SetBorrowCapGuardian newBorrowCapGuardian:<Address>" - Sets the Borrow Cap Guardian for the Comptroller
-          * E.g. "Comptroller SetBorrowCapGuardian Geoff"
-      `,
-      "SetBorrowCapGuardian",
-      [
-        new Arg("comptroller", getComptroller, {implicit: true}),
-        new Arg("newBorrowCapGuardian", getAddressV)
-      ],
-      (world, from, {comptroller, newBorrowCapGuardian}) => setBorrowCapGuardian(world, from, comptroller, newBorrowCapGuardian.val)
     ),
     new Command<{comptroller: Comptroller, blockNumber: NumberV}>(`
         #### SetBlockNumber
