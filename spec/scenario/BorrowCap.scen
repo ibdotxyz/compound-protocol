@@ -118,13 +118,13 @@ Test "Setting borrow cap restricted to admin"
     From Robert (Comptroller SetMarketBorrowCaps (cETH) (0.01e18))
     Assert Revert
 
-Test "Borrow cap guardian can set borrow caps"
+Test "Guardian can set borrow caps"
     NewComptroller price:1.0
     ListedCToken ZRX cZRX
     ListedEtherToken cETH initialExchangeRate:0.005e9
     SetCollateralFactor cZRX collateralFactor:0.5
     SetCollateralFactor cETH collateralFactor:0.5
-    Comptroller SetBorrowCapGuardian Geoff
+    Comptroller SetPauseGuardian Geoff
     From Geoff (Comptroller SetMarketBorrowCaps (cZRX) (0.5e18))
     AllowFailures
     From Robert (Comptroller SetMarketBorrowCaps (cZRX) (0.01e18)) -- Robert still can't...
@@ -132,13 +132,7 @@ Test "Borrow cap guardian can set borrow caps"
     From Robert (Comptroller SetMarketBorrowCaps (cZRX) (0.01e18))
     Assert Revert
     Assert Equal (Comptroller BorrowCaps cZRX) (Exactly 0.5e18)
-    Assert Equal (Comptroller BorrowCapGuardian) (User Geoff Address)
-
-Test "Only admin can set Borrow Cap Guardian"
-    NewComptroller price:1.0
-    AllowFailures
-    From Robert (Comptroller SetBorrowCapGuardian Robert) -- Robert has really gone rogue
-    Assert Revert
+    Assert Equal (Comptroller PauseGuardian) (User Geoff Address)
 
 Test "SetBorrowCaps works correctly too"
     NewComptroller price:1.0

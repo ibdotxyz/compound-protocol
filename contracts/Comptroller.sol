@@ -54,14 +54,8 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /// @notice Emitted when borrow cap for a cToken is changed
     event NewBorrowCap(CToken indexed cToken, uint256 newBorrowCap);
 
-    /// @notice Emitted when borrow cap guardian is changed
-    event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
-
     /// @notice Emitted when supply cap for a cToken is changed
     event NewSupplyCap(CToken indexed cToken, uint256 newSupplyCap);
-
-    /// @notice Emitted when supply cap guardian is changed
-    event NewSupplyCapGuardian(address oldSupplyCapGuardian, address newSupplyCapGuardian);
 
     /// @notice Emitted when protocol's credit limit has changed
     event CreditLimitChanged(address protocol, address market, uint256 creditLimit);
@@ -900,11 +894,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
-            // Skip the asset if it is not listed.
-            if (!isMarketListed(address(asset))) {
-                continue;
-            }
-
             // Read the balances and exchange rate from the cToken
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(
                 account
@@ -1122,6 +1111,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function _supportMarket(CToken cToken, Version version) external returns (uint256) {
         require(msg.sender == admin, "admin only");
         require(!isMarketListed(address(cToken)), "market already listed");
+        require(!isMarkertDelisted[address(cToken)], "market has been delisted");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
@@ -1168,31 +1158,14 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
-     * @notice Admin function to change the Supply Cap Guardian
-     * @param newSupplyCapGuardian The address of the new Supply Cap Guardian
-     */
-    function _setSupplyCapGuardian(address newSupplyCapGuardian) external {
-        require(msg.sender == admin, "admin only");
-
-        // Save current value for inclusion in log
-        address oldSupplyCapGuardian = supplyCapGuardian;
-
-        // Store supplyCapGuardian with value newSupplyCapGuardian
-        supplyCapGuardian = newSupplyCapGuardian;
-
-        // Emit NewSupplyCapGuardian(OldSupplyCapGuardian, NewSupplyCapGuardian)
-        emit NewSupplyCapGuardian(oldSupplyCapGuardian, newSupplyCapGuardian);
-    }
-
-    /**
      * @notice Set the given supply caps for the given cToken markets. Supplying that brings total supplys to or above supply cap will revert.
-     * @dev Admin or supplyCapGuardian function to set the supply caps. A supply cap of 0 corresponds to unlimited supplying. If the total borrows
+     * @dev Admin or pauseGuardian function to set the supply caps. A supply cap of 0 corresponds to unlimited supplying. If the total borrows
      *      already exceeded the cap, it will prevent anyone to borrow.
      * @param cTokens The addresses of the markets (tokens) to change the supply caps for
      * @param newSupplyCaps The new supply cap values in underlying to be set. A value of 0 corresponds to unlimited supplying.
      */
     function _setMarketSupplyCaps(CToken[] calldata cTokens, uint256[] calldata newSupplyCaps) external {
-        require(msg.sender == admin || msg.sender == supplyCapGuardian, "admin or supply cap guardian only");
+        require(msg.sender == admin || msg.sender == pauseGuardian, "admin or guardian only");
 
         uint256 numMarkets = cTokens.length;
         uint256 numSupplyCaps = newSupplyCaps.length;
@@ -1207,13 +1180,13 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
     /**
      * @notice Set the given borrow caps for the given cToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
-     * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing. If the total supplies
+     * @dev Admin or pauseGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing. If the total supplies
      *      already exceeded the cap, it will prevent anyone to mint.
      * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
      * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
      */
     function _setMarketBorrowCaps(CToken[] calldata cTokens, uint256[] calldata newBorrowCaps) external {
-        require(msg.sender == admin || msg.sender == borrowCapGuardian, "admin or borrow cap guardian only");
+        require(msg.sender == admin || msg.sender == pauseGuardian, "admin or guardian only");
 
         uint256 numMarkets = cTokens.length;
         uint256 numBorrowCaps = newBorrowCaps.length;
@@ -1224,23 +1197,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             borrowCaps[address(cTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(cTokens[i], newBorrowCaps[i]);
         }
-    }
-
-    /**
-     * @notice Admin function to change the Borrow Cap Guardian
-     * @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-     */
-    function _setBorrowCapGuardian(address newBorrowCapGuardian) external {
-        require(msg.sender == admin, "admin only");
-
-        // Save current value for inclusion in log
-        address oldBorrowCapGuardian = borrowCapGuardian;
-
-        // Store borrowCapGuardian with value newBorrowCapGuardian
-        borrowCapGuardian = newBorrowCapGuardian;
-
-        // Emit NewBorrowCapGuardian(OldBorrowCapGuardian, NewBorrowCapGuardian)
-        emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
     }
 
     /**
@@ -1365,12 +1321,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address market,
         uint256 creditLimit
     ) public {
-        require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
+        require(
+            msg.sender == admin || msg.sender == creditLimitManager || msg.sender == pauseGuardian,
+            "admin or credit limit manager or pause guardian only"
+        );
         require(isMarketListed(market), "market not listed");
 
         if (_creditLimits[protocol][market] == 0 && creditLimit != 0) {
-            // Only admin could set a new credit limit.
-            require(msg.sender == admin, "admin only");
+            // Only admin or credit limit manager could set a new credit limit.
+            require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
         }
 
         _creditLimits[protocol][market] = creditLimit;
