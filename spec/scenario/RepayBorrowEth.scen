@@ -108,6 +108,9 @@ Test "Repay successfully even the market has been delisted"
     Expect Changes (EtherBalance Geoff) Zero
     Expect Changes (EtherBalance cETH) Zero
     SetCollateralFactor cETH 0 -- Clear collateral factor
+    Comptroller SetPaused "Mint" cETH True -- Pause
+    Comptroller SetPaused "Borrow" cETH True -- Pause
+    Comptroller SetPaused "Flashloan" cETH True -- Pause
     Comptroller UnList cETH -- Delist cETH
     RepayBorrowEth Geoff 0.001e18 cETH
     ---- Let's check the overall numbers

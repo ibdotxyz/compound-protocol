@@ -316,7 +316,7 @@ Test "Proper liquidation of paused WBTC as collateral"
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT -- should now take twice as much collateral
     Assert Revert -- Reverts since we can't transfer the BAT in due to pause
 
-Test "When seize not allowed due to unlisted collateral"
+Test "When seize a delisted collateral"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
     Assert Equal (CToken cBAT BorrowBalance Geoff) 1e18
     Assert Equal (CToken cBAT TotalBorrows) 1e18
@@ -335,17 +335,20 @@ Test "When seize not allowed due to unlisted collateral"
     FastForward 20000000 Blocks -- 1e18 * (1 + 20000000 * 0.000005)
     AccrueInterest cBAT -- Note: we have to accrue interest
                         -- since it's not automatic for liquidity
-    Invariant Remains (CToken cBAT BorrowBalanceStored Geoff) 101e18
-    Invariant Remains (CToken cBAT TotalBorrows) 101e18
+    Assert Equal (CToken cBAT BorrowBalanceStored Geoff) 101e18
+    Assert Equal (CToken cBAT TotalBorrows) 101e18
     -- Okay, so we should be able to liquidate, so let's do that.
     Prep Torrey 10e18 BAT cBAT
     SetCollateralFactor cBAT 0 -- Clear collateral factor
+    Comptroller SetPaused "Mint" cBAT True -- Pause
+    Comptroller SetPaused "Borrow" cBAT True -- Pause
+    Comptroller SetPaused "Flashloan" cBAT True -- Pause
     Comptroller UnList cBAT -- Mock unlist collateral
-    AllowFailures
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT
-    Assert Revert "revert market not listed"
+    Assert Equal (CToken cBAT BorrowBalanceStored Geoff) 99e18
+    Assert Equal (CToken cBAT TotalBorrows) 99e18
 
-Test "When seize not allowed due to unlisted borrow"
+Test "When repaid a delisted borrow"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
     Assert Equal (CToken cBAT BorrowBalance Geoff) 1e18
     Assert Equal (CToken cBAT TotalBorrows) 1e18
@@ -364,15 +367,18 @@ Test "When seize not allowed due to unlisted borrow"
     FastForward 20000000 Blocks -- 1e18 * (1 + 20000000 * 0.000005)
     AccrueInterest cBAT -- Note: we have to accrue interest
                         -- since it's not automatic for liquidity
-    Invariant Remains (CToken cBAT BorrowBalanceStored Geoff) 101e18
-    Invariant Remains (CToken cBAT TotalBorrows) 101e18
+    Assert Equal (CToken cBAT BorrowBalanceStored Geoff) 101e18
+    Assert Equal (CToken cBAT TotalBorrows) 101e18
     -- Okay, so we should be able to liquidate, so let's do that.
     Prep Torrey 10e18 BAT cBAT
     SetCollateralFactor cBAT 0 -- Clear collateral factor
+    Comptroller SetPaused "Mint" cBAT True -- Pause
+    Comptroller SetPaused "Borrow" cBAT True -- Pause
+    Comptroller SetPaused "Flashloan" cBAT True -- Pause
     Comptroller UnList cBAT -- Mock unlist borrow
-    AllowFailures
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT
-    Assert Revert "revert market not listed"
+    Assert Equal (CToken cBAT BorrowBalanceStored Geoff) 99e18
+    Assert Equal (CToken cBAT TotalBorrows) 99e18
 
 Test "When there's insufficient collateral"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
