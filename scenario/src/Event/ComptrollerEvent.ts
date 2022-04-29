@@ -112,8 +112,8 @@ async function supportMarket(world: World, from: string, comptroller: Comptrolle
   return world;
 }
 
-async function unlistMarket(world: World, from: string, comptroller: Comptroller, cToken: CToken): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods._delistMarket(cToken._address), from, ComptrollerErrorReporter);
+async function unlistMarket(world: World, from: string, comptroller: Comptroller, cToken: CToken, force: boolean): Promise<World> {
+  let invokation = await invoke(world, comptroller.methods._delistMarket(cToken._address, force), from, ComptrollerErrorReporter);
 
   world = addAction(
     world,
@@ -406,18 +406,19 @@ export function comptrollerCommands() {
       ],
       (world, from, {comptroller, cToken, version}) => supportMarket(world, from, comptroller, cToken, version)
     ),
-    new Command<{comptroller: Comptroller, cToken: CToken}>(`
+    new Command<{comptroller: Comptroller, cToken: CToken, force: BoolV}>(`
         #### UnList
 
-        * "Comptroller UnList <CToken>" - Mock unlists a given market in tests
-          * E.g. "Comptroller UnList cZRX"
+        * "Comptroller UnList <CToken> <Bool>" - Mock unlists a given market in tests
+          * E.g. "Comptroller UnList cZRX True"
       `,
       "UnList",
       [
         new Arg("comptroller", getComptroller, {implicit: true}),
-        new Arg("cToken", getCTokenV)
+        new Arg("cToken", getCTokenV),
+        new Arg("force", getBoolV)
       ],
-      (world, from, {comptroller, cToken}) => unlistMarket(world, from, comptroller, cToken)
+      (world, from, {comptroller, cToken, force}) => unlistMarket(world, from, comptroller, cToken, force.val)
     ),
     new Command<{comptroller: Comptroller, cTokens: CToken[]}>(`
         #### EnterMarkets

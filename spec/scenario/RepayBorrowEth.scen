@@ -97,7 +97,7 @@ Test "Borrow, and get a negative total cash situation"
     Assert Equal (CToken cETH BorrowBalance Geoff) 0.049e18
     Assert Equal (CToken cETH TotalBorrowsCurrent) 0.049e18
 
-Test "Repay successfully even the market has been delisted"
+Test "Repay successfully even the market has been soft delisted"
     NewBorrowEth borrowAmount:0.001e18 borrowRate:0.000005
     Assert Equal (CToken cETH BorrowBalance Geoff) 0.001e18
     Assert Equal (CToken cETH TotalBorrowsCurrent) 0.001e18
@@ -111,7 +111,7 @@ Test "Repay successfully even the market has been delisted"
     Comptroller SetPaused "Mint" cETH True -- Pause
     Comptroller SetPaused "Borrow" cETH True -- Pause
     Comptroller SetPaused "Flashloan" cETH True -- Pause
-    Comptroller UnList cETH -- Delist cETH
+    Comptroller UnList cETH False -- Delist cETH
     RepayBorrowEth Geoff 0.001e18 cETH
     ---- Let's check the overall numbers
     Assert Equal (CToken cETH BorrowBalance Geoff) 0.0015e18
