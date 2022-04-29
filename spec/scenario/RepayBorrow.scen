@@ -129,6 +129,9 @@ Test "Repay successfully even the market has been delisted"
     Expect Changes (Erc20 BAT TokenBalance Geoff) Zero
     Expect Changes (Erc20 BAT TokenBalance cBAT) Zero
     SetCollateralFactor cBAT 0 -- Clear collateral factor
+    Comptroller SetPaused "Mint" cBAT True -- Pause
+    Comptroller SetPaused "Borrow" cBAT True -- Pause
+    Comptroller SetPaused "Flashloan" cBAT True -- Pause
     Comptroller UnList cBAT -- Delist BAT
     RepayBorrow Geoff 2.5e18 cBAT
     -- Let's check the overall numbers

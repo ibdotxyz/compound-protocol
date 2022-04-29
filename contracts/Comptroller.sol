@@ -218,6 +218,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
+     * @notice Return a specific market is listed or delisted
+     * @param cTokenAddress The address of the asset to be checked
+     * @return Whether or not the market is listed or delisted
+     */
+    function isMarketListedOrDelisted(address cTokenAddress) public view returns (bool) {
+        return markets[cTokenAddress].isListed || isMarkertDelisted[cTokenAddress];
+    }
+
+    /**
      * @notice Return the credit limit of a specific protocol
      * @dev This function shouldn't be called. It exists only for backward compatibility.
      * @param protocol The address of the protocol
@@ -320,7 +329,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
-        require(isMarketListed(cToken) || isMarkertDelisted[cToken], "market not listed");
+        require(isMarketListedOrDelisted(cToken), "market not listed");
         require(!isCreditAccount(redeemer, cToken), "credit account cannot redeem");
 
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
@@ -460,7 +469,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Shh - currently unused
         repayAmount;
 
-        require(isMarketListed(cToken) || isMarkertDelisted[cToken], "market not listed");
+        require(isMarketListedOrDelisted(cToken), "market not listed");
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
@@ -516,7 +525,10 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Shh - currently unused
         liquidator;
 
-        require(isMarketListed(cTokenBorrowed) && isMarketListed(cTokenCollateral), "market not listed");
+        require(
+            isMarketListedOrDelisted(cTokenBorrowed) && isMarketListedOrDelisted(cTokenCollateral),
+            "market not listed"
+        );
 
         /* The borrower must have shortfall in order to be liquidatable */
         (Error err, , uint256 shortfall) = getAccountLiquidityInternal(borrower);
@@ -586,7 +598,10 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         liquidator;
         seizeTokens;
 
-        require(isMarketListed(cTokenBorrowed) && isMarketListed(cTokenCollateral), "market not listed");
+        require(
+            isMarketListedOrDelisted(cTokenBorrowed) && isMarketListedOrDelisted(cTokenCollateral),
+            "market not listed"
+        );
         require(
             CToken(cTokenCollateral).comptroller() == CToken(cTokenBorrowed).comptroller(),
             "comptroller mismatched"
@@ -640,9 +655,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!transferGuardianPaused, "transfer is paused");
         require(!isCreditAccount(dst, cToken), "cannot transfer to a credit account");
-
-        // Shh - currently unused
-        dst;
 
         // Currently the only consideration is whether or not
         //  the src is allowed to redeem this many tokens
@@ -1066,8 +1078,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      */
     function _supportMarket(CToken cToken, Version version) external returns (uint256) {
         require(msg.sender == admin, "admin only");
-        require(!isMarketListed(address(cToken)), "market already listed");
-        require(!isMarkertDelisted[address(cToken)], "market has been delisted");
+        require(!isMarketListedOrDelisted(address(cToken)), "market already listed or delisted");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
@@ -1088,8 +1099,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         require(msg.sender == admin, "admin only");
         require(isMarketListed(address(cToken)), "market not listed");
         require(markets[address(cToken)].collateralFactorMantissa == 0, "market has collateral");
-
-        cToken.isCToken(); // Sanity check to make sure its really a CToken
+        require(
+            mintGuardianPaused[address(cToken)] &&
+                borrowGuardianPaused[address(cToken)] &&
+                flashloanGuardianPaused[address(cToken)],
+            "market not paused"
+        );
 
         isMarkertDelisted[address(cToken)] = true;
         delete markets[address(cToken)];

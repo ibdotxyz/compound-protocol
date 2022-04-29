@@ -224,15 +224,18 @@ describe('Comptroller', () => {
       const cToken = await makeCToken();
       const result1 = await send(cToken.comptroller, '_supportMarket', [cToken._address, version]);
       expect(result1).toHaveLog('MarketListed', {cToken: cToken._address});
-      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed');
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed or delisted');
     });
 
     it("cannot list a delisted market", async () => {
       const cToken = await makeCToken();
       const result1 = await send(cToken.comptroller, '_supportMarket', [cToken._address, version]);
       expect(result1).toHaveLog('MarketListed', {cToken: cToken._address});
+      await send(cToken.comptroller, '_setMintPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
       await send(cToken.comptroller, '_delistMarket', [cToken._address]);
-      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market has been delisted');
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed or delisted');
     });
 
     it("can list two different markets", async () => {
@@ -306,9 +309,18 @@ describe('Comptroller', () => {
       await expect(send(cToken.comptroller, '_delistMarket', [cToken._address])).rejects.toRevert('revert market has collateral');
     });
 
+    it("fails if market not paused", async () => {
+      const cToken = await makeCToken();
+      expect(await send(cToken.comptroller, '_supportMarket', [cToken._address, version])).toSucceed();
+      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address])).rejects.toRevert('revert market not paused');
+    });
+
     it("succeeds and delists market", async () => {
       const cToken = await makeCToken();
       expect(await send(cToken.comptroller, '_supportMarket', [cToken._address, version])).toSucceed();
+      await send(cToken.comptroller, '_setMintPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
       const result = await send(cToken.comptroller, '_delistMarket', [cToken._address]);
       expect(result).toHaveLog('MarketDelisted', {cToken: cToken._address});
     });
@@ -318,6 +330,12 @@ describe('Comptroller', () => {
       const cToken2 = await makeCToken({comptroller: cToken1.comptroller});
       expect(await send(cToken1.comptroller, '_supportMarket', [cToken1._address, version])).toSucceed();
       expect(await send(cToken2.comptroller, '_supportMarket', [cToken2._address, version])).toSucceed();
+      await send(cToken1.comptroller, '_setMintPaused', [cToken1._address, true]);
+      await send(cToken1.comptroller, '_setBorrowPaused', [cToken1._address, true]);
+      await send(cToken1.comptroller, '_setFlashloanPaused', [cToken1._address, true]);
+      await send(cToken2.comptroller, '_setMintPaused', [cToken2._address, true]);
+      await send(cToken2.comptroller, '_setBorrowPaused', [cToken2._address, true]);
+      await send(cToken2.comptroller, '_setFlashloanPaused', [cToken2._address, true]);
       const result1 = await send(cToken1.comptroller, '_delistMarket', [cToken1._address]);
       const result2 = await send(cToken2.comptroller, '_delistMarket', [cToken2._address]);
       expect(result1).toHaveLog('MarketDelisted', {cToken: cToken1._address});
