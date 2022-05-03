@@ -117,7 +117,7 @@ Test "Borrow, hold a few blocks, and repay behalf part"
     Assert Equal (CToken cBAT BorrowBalance Geoff) 3e18
     Assert Equal (CToken cBAT TotalBorrowsCurrent) 3e18
 
-Test "Repay successfully even the market has been delisted"
+Test "Repay successfully even the market has been soft delisted"
     NewBorrow borrowAmount:1e18 borrowRate:0.000005
     Assert Equal (CToken cBAT BorrowBalance Geoff) 1e18
     Assert Equal (CToken cBAT TotalBorrowsCurrent) 1e18
@@ -129,7 +129,10 @@ Test "Repay successfully even the market has been delisted"
     Expect Changes (Erc20 BAT TokenBalance Geoff) Zero
     Expect Changes (Erc20 BAT TokenBalance cBAT) Zero
     SetCollateralFactor cBAT 0 -- Clear collateral factor
-    Comptroller UnList cBAT -- Delist BAT
+    Comptroller SetPaused "Mint" cBAT True -- Pause
+    Comptroller SetPaused "Borrow" cBAT True -- Pause
+    Comptroller SetPaused "Flashloan" cBAT True -- Pause
+    Comptroller UnList cBAT False -- Delist BAT
     RepayBorrow Geoff 2.5e18 cBAT
     -- Let's check the overall numbers
     Assert Equal (CToken cBAT BorrowBalance Geoff) 0

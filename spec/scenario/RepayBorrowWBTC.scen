@@ -117,7 +117,7 @@ Test "Borrow, hold a few blocks, and repay behalf part"
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 3e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 3e8
 
-Test "Repay successfully even the market has been delisted"
+Test "Repay successfully even the market has been soft delisted"
     NewBorrow borrowAmount:1e8 borrowRate:0.000005
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 1e8
     Assert Equal (CToken cWBTC TotalBorrowsCurrent) 1e8
@@ -130,7 +130,10 @@ Test "Repay successfully even the market has been delisted"
     Expect Changes (Erc20 WBTC TokenBalance Geoff) Zero
     Expect Changes (Erc20 WBTC TokenBalance cWBTC) Zero
     SetCollateralFactor cWBTC 0 -- Clear collateral factor
-    Comptroller UnList cWBTC -- Delist WBTC
+    Comptroller SetPaused "Mint" cWBTC True -- Pause
+    Comptroller SetPaused "Borrow" cWBTC True -- Pause
+    Comptroller SetPaused "Flashloan" cWBTC True -- Pause
+    Comptroller UnList cWBTC False -- Delist WBTC
     RepayBorrow Geoff 2.5e8 cWBTC
     -- Let's check the overall numbers
     Assert Equal (CToken cWBTC BorrowBalance Geoff) 0

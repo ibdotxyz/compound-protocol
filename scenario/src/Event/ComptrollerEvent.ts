@@ -42,20 +42,22 @@ async function genComptroller(world: World, from: string, params: Event): Promis
   return world;
 };
 
-async function setPaused(world: World, from: string, comptroller: Comptroller, actionName: string, isPaused: boolean): Promise<World> {
+async function setPaused(world: World, from: string, comptroller: Comptroller, actionName: string, cToken: CToken, isPaused: boolean): Promise<World> {
   const pauseMap = {
-    "Mint": comptroller.methods._setMintPaused
+    "Mint": comptroller.methods._setMintPaused,
+    "Borrow": comptroller.methods._setBorrowPaused,
+    "Flashloan": comptroller.methods._setFlashloanPaused
   };
 
   if (!pauseMap[actionName]) {
     throw `Cannot find pause function for action "${actionName}"`;
   }
 
-  let invokation = await invoke(world, comptroller[actionName]([isPaused]), from, ComptrollerErrorReporter);
+  let invokation = await invoke(world, pauseMap[actionName](cToken._address, isPaused), from, ComptrollerErrorReporter);
 
   world = addAction(
     world,
-    `Comptroller: set paused for ${actionName} to ${isPaused}`,
+    `Comptroller: set paused for ${actionName} ${cToken.name} to ${isPaused}`,
     invokation
   );
 
@@ -110,8 +112,8 @@ async function supportMarket(world: World, from: string, comptroller: Comptrolle
   return world;
 }
 
-async function unlistMarket(world: World, from: string, comptroller: Comptroller, cToken: CToken): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods._delistMarket(cToken._address), from, ComptrollerErrorReporter);
+async function unlistMarket(world: World, from: string, comptroller: Comptroller, cToken: CToken, force: boolean): Promise<World> {
+  let invokation = await invoke(world, comptroller.methods._delistMarket(cToken._address, force), from, ComptrollerErrorReporter);
 
   world = addAction(
     world,
@@ -362,19 +364,20 @@ export function comptrollerCommands() {
       [new Arg("comptrollerParams", getEventV, {variadic: true})],
       (world, from, {comptrollerParams}) => genComptroller(world, from, comptrollerParams.val)
     ),
-    new Command<{comptroller: Comptroller, action: StringV, isPaused: BoolV}>(`
+    new Command<{comptroller: Comptroller, action: StringV, cToken: CToken, isPaused: BoolV}>(`
         #### SetPaused
 
-        * "Comptroller SetPaused <Action> <Bool>" - Pauses or unpaused given cToken function
-          * E.g. "Comptroller SetPaused "Mint" True"
+        * "Comptroller SetPaused <Action> <CToken> <Bool>" - Pauses or unpaused given cToken function
+          * E.g. "Comptroller SetPaused "Mint" cZRX True"
       `,
       "SetPaused",
       [
         new Arg("comptroller", getComptroller, {implicit: true}),
         new Arg("action", getStringV),
+        new Arg("cToken", getCTokenV),
         new Arg("isPaused", getBoolV)
       ],
-      (world, from, {comptroller, action, isPaused}) => setPaused(world, from, comptroller, action.val, isPaused.val)
+      (world, from, {comptroller, action, cToken, isPaused}) => setPaused(world, from, comptroller, action.val, cToken, isPaused.val)
     ),
     new Command<{comptroller: Comptroller, cToken: CToken}>(`
         #### OldSupportMarket
@@ -403,18 +406,19 @@ export function comptrollerCommands() {
       ],
       (world, from, {comptroller, cToken, version}) => supportMarket(world, from, comptroller, cToken, version)
     ),
-    new Command<{comptroller: Comptroller, cToken: CToken}>(`
+    new Command<{comptroller: Comptroller, cToken: CToken, force: BoolV}>(`
         #### UnList
 
-        * "Comptroller UnList <CToken>" - Mock unlists a given market in tests
-          * E.g. "Comptroller UnList cZRX"
+        * "Comptroller UnList <CToken> <Bool>" - Mock unlists a given market in tests
+          * E.g. "Comptroller UnList cZRX True"
       `,
       "UnList",
       [
         new Arg("comptroller", getComptroller, {implicit: true}),
-        new Arg("cToken", getCTokenV)
+        new Arg("cToken", getCTokenV),
+        new Arg("force", getBoolV)
       ],
-      (world, from, {comptroller, cToken}) => unlistMarket(world, from, comptroller, cToken)
+      (world, from, {comptroller, cToken, force}) => unlistMarket(world, from, comptroller, cToken, force.val)
     ),
     new Command<{comptroller: Comptroller, cTokens: CToken[]}>(`
         #### EnterMarkets
