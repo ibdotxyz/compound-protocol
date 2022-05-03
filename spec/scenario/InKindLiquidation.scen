@@ -316,7 +316,7 @@ Test "Proper liquidation of paused WBTC as collateral"
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT -- should now take twice as much collateral
     Assert Revert -- Reverts since we can't transfer the BAT in due to pause
 
-Test "When seize a delisted collateral"
+Test "When seize a soft delisted collateral"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
     Assert Equal (CToken cBAT BorrowBalance Geoff) 1e18
     Assert Equal (CToken cBAT TotalBorrows) 1e18
@@ -343,12 +343,12 @@ Test "When seize a delisted collateral"
     Comptroller SetPaused "Mint" cBAT True -- Pause
     Comptroller SetPaused "Borrow" cBAT True -- Pause
     Comptroller SetPaused "Flashloan" cBAT True -- Pause
-    Comptroller UnList cBAT -- Mock unlist collateral
+    Comptroller UnList cBAT False -- Mock unlist collateral
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT
     Assert Equal (CToken cBAT BorrowBalanceStored Geoff) 99e18
     Assert Equal (CToken cBAT TotalBorrows) 99e18
 
-Test "When repaid a delisted borrow"
+Test "When repaid a soft delisted borrow"
     InKindBorrow borrowAmount:1e18 borrowRate:0.000005
     Assert Equal (CToken cBAT BorrowBalance Geoff) 1e18
     Assert Equal (CToken cBAT TotalBorrows) 1e18
@@ -375,7 +375,7 @@ Test "When repaid a delisted borrow"
     Comptroller SetPaused "Mint" cBAT True -- Pause
     Comptroller SetPaused "Borrow" cBAT True -- Pause
     Comptroller SetPaused "Flashloan" cBAT True -- Pause
-    Comptroller UnList cBAT -- Mock unlist borrow
+    Comptroller UnList cBAT False -- Mock unlist borrow
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT
     Assert Equal (CToken cBAT BorrowBalanceStored Geoff) 99e18
     Assert Equal (CToken cBAT TotalBorrows) 99e18
