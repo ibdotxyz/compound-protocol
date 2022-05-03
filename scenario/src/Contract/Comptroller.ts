@@ -16,7 +16,6 @@ interface ComptrollerMethods {
   setBlockNumber(encodedNumber): Sendable<number>
   collateralFactor(string): Callable<string>
   markets(string): Callable<{0: boolean, 1: number, 2?: number}>
-  _setMintPaused(bool): Sendable<number>
   _setLiquidationIncentive(encodedNumber): Sendable<number>
   _supportMarket(string): Sendable<number>
   _supportMarket(string, encodedNumber): Sendable<number>
@@ -30,15 +29,16 @@ interface ComptrollerMethods {
   _setPendingImplementation(string): Sendable<number>
   comptrollerImplementation(): Callable<string>
   unlist(string): Sendable<void>
-  _delistMarket(market: string): Sendable<void>
+  _delistMarket(market: string, force: boolean): Sendable<void>
   admin(): Callable<string>
   pendingAdmin(): Callable<string>
   _setPendingAdmin(string): Sendable<number>
   _acceptAdmin(): Sendable<number>
   _setPauseGuardian(string): Sendable<number>
   pauseGuardian(): Callable<string>
-  _setMintPaused(market: string, string): Sendable<number>
-  _setBorrowPaused(market: string, string): Sendable<number>
+  _setMintPaused(market: string, state: boolean): Sendable<boolean>
+  _setBorrowPaused(market: string, state: boolean): Sendable<boolean>
+  _setFlashloanPaused(market: string, state: boolean): Sendable<boolean>
   _setTransferPaused(string): Sendable<number>
   _setSeizePaused(string): Sendable<number>
   _mintGuardianPaused(): Callable<boolean>
