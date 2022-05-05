@@ -134,7 +134,7 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
 
     /// @notice creditLimits allowed specific protocols to borrow and repay without collateral.
     /// @dev This storage is depreacted.
-    mapping(address => uint256) internal _oldCreditLimits;
+    mapping(address => uint256) public _creditLimits;
 
     /// @notice flashloanGuardianPaused can pause flash loan as a safety mechanism.
     mapping(address => bool) public flashloanGuardianPaused;
@@ -143,7 +143,7 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     address public liquidityMining;
 
     /// @notice creditLimits allowed specific protocols to borrow and repay specific markets without collateral.
-    mapping(address => mapping(address => uint256)) internal _creditLimits;
+    mapping(address => mapping(address => uint256)) public creditLimits;
 
     /// @notice isMarkertDelisted records the market which has been delisted by us.
     mapping(address => bool) public isMarkertDelisted;

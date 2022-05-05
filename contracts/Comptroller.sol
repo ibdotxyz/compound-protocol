@@ -226,27 +226,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         return markets[cTokenAddress].isListed || isMarkertDelisted[cTokenAddress];
     }
 
-    /**
-     * @notice Return the credit limit of a specific protocol
-     * @dev This function shouldn't be called. It exists only for backward compatibility.
-     * @param protocol The address of the protocol
-     * @return The credit
-     */
-    function creditLimits(address protocol) public view returns (uint256) {
-        protocol; // Shh
-        return 0;
-    }
-
-    /**
-     * @notice Return the credit limit of a specific protocol for a specific market
-     * @param protocol The address of the protocol
-     * @param market The market
-     * @return The credit
-     */
-    function creditLimits(address protocol, address market) public view returns (uint256) {
-        return _creditLimits[protocol][market];
-    }
-
     /*** Policy Hooks ***/
 
     /**
@@ -428,7 +407,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             require(nextTotalBorrows < borrowCap, "market borrow cap reached");
         }
 
-        uint256 creditLimit = _creditLimits[borrower][cToken];
+        uint256 creditLimit = creditLimits[borrower][cToken];
         // If the borrower is a credit account, check the credit limit instead of account liquidity.
         if (creditLimit > 0) {
             (uint256 oErr, , uint256 borrowBalance, ) = CToken(cToken).getAccountSnapshot(borrower);
@@ -776,7 +755,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @return The account is a credit account or not
      */
     function isCreditAccount(address account, address cToken) public view returns (bool) {
-        return _creditLimits[account][cToken] > 0;
+        return creditLimits[account][cToken] > 0;
     }
 
     /*** Liquidity/Liquidation Calculations ***/
@@ -1357,12 +1336,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         );
         require(isMarketListed(market), "market not listed");
 
-        if (_creditLimits[protocol][market] == 0 && creditLimit != 0) {
+        if (creditLimits[protocol][market] == 0 && creditLimit != 0) {
             // Only admin or credit limit manager could set a new credit limit.
             require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
         }
 
-        _creditLimits[protocol][market] = creditLimit;
+        creditLimits[protocol][market] = creditLimit;
         emit CreditLimitChanged(protocol, market, creditLimit);
     }
 
