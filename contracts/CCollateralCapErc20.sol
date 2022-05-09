@@ -782,22 +782,37 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         /* Fail if borrower = liquidator */
         require(borrower != liquidator, "invalid account pair");
 
+        /**
+         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
+         * The buffer between the two values will be seized first.
+         * bufferTokens = accountTokens[borrower] - accountCollateralTokens[borrower]
+         * collateralTokens = seizeTokens - bufferTokens
+         */
+        uint256 bufferTokens = sub_(accountTokens[borrower], accountCollateralTokens[borrower]);
+        uint256 collateralTokens = 0;
+        if (seizeTokens > bufferTokens) {
+            collateralTokens = seizeTokens - bufferTokens;
+        }
+
         /*
          * We calculate the new borrower and liquidator token balances and token collateral balances, failing on underflow/overflow:
          *  accountTokens[borrower] = accountTokens[borrower] - seizeTokens
          *  accountTokens[liquidator] = accountTokens[liquidator] + seizeTokens
-         *  accountCollateralTokens[borrower] = accountCollateralTokens[borrower] - seizeTokens
-         *  accountCollateralTokens[liquidator] = accountCollateralTokens[liquidator] + seizeTokens
+         *  accountCollateralTokens[borrower] = accountCollateralTokens[borrower] - collateralTokens
+         *  accountCollateralTokens[liquidator] = accountCollateralTokens[liquidator] + collateralTokens
          */
         accountTokens[borrower] = sub_(accountTokens[borrower], seizeTokens);
         accountTokens[liquidator] = add_(accountTokens[liquidator], seizeTokens);
-        accountCollateralTokens[borrower] = sub_(accountCollateralTokens[borrower], seizeTokens);
-        accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], seizeTokens);
+        if (collateralTokens > 0) {
+            accountCollateralTokens[borrower] = sub_(accountCollateralTokens[borrower], collateralTokens);
+            accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], collateralTokens);
 
-        /* Emit a Transfer, UserCollateralChanged events */
+            emit UserCollateralChanged(borrower, accountCollateralTokens[borrower]);
+            emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
+        }
+
+        /* Emit a Transfer event */
         emit Transfer(borrower, liquidator, seizeTokens);
-        emit UserCollateralChanged(borrower, accountCollateralTokens[borrower]);
-        emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
 
         /* We call the defense hook */
         comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);

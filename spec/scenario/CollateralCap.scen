@@ -241,19 +241,28 @@ Test "Failed to transfer cToken for comptroller rejected"
 
 Test "Seize collateral tokens"
     CollateralCap
+    CToken cZRX SetCollateralCap 20e9
     ListedCTokenImmutable EVL cEVL initialExchangeRate:1e9 cTokenType:CEvil
     EnterMarkets Geoff cZRX
     Prep Geoff Some ZRX cZRX
     Mint Geoff 50e18 cZRX
     Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 50e9)
-    Assert Equal (CToken cZRX CollateralBalance Geoff) (Exactly 50e9)
-    Assert Equal (CToken cZRX TotalCollateralTokens) (Exactly 50e9)
-    EvilSeize cEVL 1e9 cZRX seizer:Torrey seizee:Geoff
-    Assert Equal (Erc20 cZRX TokenBalance Torrey) (Exactly 1e9)
-    Assert Equal (CToken cZRX CollateralBalance Torrey) (Exactly 1e9)
-    Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 49e9)
-    Assert Equal (CToken cZRX CollateralBalance Geoff) (Exactly 49e9)
-    Assert Equal (CToken cZRX TotalCollateralTokens) (Exactly 50e9)
+    Assert Equal (CToken cZRX CollateralBalance Geoff) (Exactly 20e9)
+    Assert Equal (Erc20 cZRX TokenBalance Torrey) Zero
+    Assert Equal (CToken cZRX CollateralBalance Torrey) Zero
+    Assert Equal (CToken cZRX TotalCollateralTokens) (Exactly 20e9)
+    EvilSeize cEVL 30e9 cZRX seizer:Torrey seizee:Geoff
+    Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 20e9)
+    Assert Equal (CToken cZRX CollateralBalance Geoff) (Exactly 20e9)
+    Assert Equal (Erc20 cZRX TokenBalance Torrey) (Exactly 30e9)
+    Assert Equal (CToken cZRX CollateralBalance Torrey) Zero
+    Assert Equal (CToken cZRX TotalCollateralTokens) (Exactly 20e9)
+    EvilSeize cEVL 10e9 cZRX seizer:Torrey seizee:Geoff
+    Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 10e9)
+    Assert Equal (CToken cZRX CollateralBalance Geoff) (Exactly 10e9)
+    Assert Equal (Erc20 cZRX TokenBalance Torrey) (Exactly 40e9)
+    Assert Equal (CToken cZRX CollateralBalance Torrey) (Exactly 10e9)
+    Assert Equal (CToken cZRX TotalCollateralTokens) (Exactly 20e9)
 
 Test "Checks account liquidity with multiple tokens"
     CollateralCap
