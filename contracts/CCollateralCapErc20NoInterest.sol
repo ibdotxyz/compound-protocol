@@ -419,6 +419,27 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
     }
 
     /**
+     * @notice Get the amount of collateral tokens user would consume.
+     * @param amountTokens The amount of tokens that user would like to redeem, transfer, or seize
+     * @param account The account address
+     * @return The amount of collateral tokens to be consumed
+     */
+    function getCollateralTokens(uint256 amountTokens, address account) internal view returns (uint256) {
+        /**
+         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
+         * The buffer between the two values will be transferred first.
+         * bufferTokens = accountTokens[account] - accountCollateralTokens[account]
+         * collateralTokens = tokens - bufferTokens
+         */
+        uint256 bufferTokens = sub_(accountTokens[account], accountCollateralTokens[account]);
+        uint256 collateralTokens = 0;
+        if (amountTokens > bufferTokens) {
+            collateralTokens = amountTokens - bufferTokens;
+        }
+        return collateralTokens;
+    }
+
+    /**
      * @notice Transfer `tokens` tokens from `src` to `dst` by `spender`
      * @dev Called by both `transfer` and `transferFrom` internally
      * @param spender The address of the account performing the transfer
@@ -437,17 +458,7 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
         initializeAccountCollateralTokens(src);
         initializeAccountCollateralTokens(dst);
 
-        /**
-         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
-         * The buffer between the two values will be transferred first.
-         * bufferTokens = accountTokens[src] - accountCollateralTokens[src]
-         * collateralTokens = tokens - bufferTokens
-         */
-        uint256 bufferTokens = sub_(accountTokens[src], accountCollateralTokens[src]);
-        uint256 collateralTokens = 0;
-        if (tokens > bufferTokens) {
-            collateralTokens = tokens - bufferTokens;
-        }
+        uint256 collateralTokens = getCollateralTokens(tokens, src);
 
         /**
          * Since bufferTokens are not collateralized and can be transferred freely, we only check with comptroller
@@ -644,6 +655,7 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
         uint256 exchangeRateMantissa;
         uint256 redeemTokens;
         uint256 redeemAmount;
+        uint256 collateralTokens;
     }
 
     /**
@@ -690,20 +702,10 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
             vars.redeemAmount = redeemAmountIn;
         }
 
-        /**
-         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
-         * The buffer between the two values will be redeemed first.
-         * bufferTokens = accountTokens[redeemer] - accountCollateralTokens[redeemer]
-         * collateralTokens = redeemTokens - bufferTokens
-         */
-        uint256 bufferTokens = sub_(accountTokens[redeemer], accountCollateralTokens[redeemer]);
-        uint256 collateralTokens = 0;
-        if (vars.redeemTokens > bufferTokens) {
-            collateralTokens = vars.redeemTokens - bufferTokens;
-        }
+        vars.collateralTokens = getCollateralTokens(vars.redeemTokens, redeemer);
 
         /* redeemAllowed might check more than user's liquidity. */
-        require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "rejected");
+        require(comptroller.redeemAllowed(address(this), redeemer, vars.collateralTokens) == 0, "rejected");
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "market is stale");
@@ -726,7 +728,7 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
         /*
          * We only deallocate collateral tokens if the redeemer needs to redeem them.
          */
-        decreaseUserCollateralInternal(redeemer, collateralTokens);
+        decreaseUserCollateralInternal(redeemer, vars.collateralTokens);
 
         /*
          * We invoke doTransferOut for the redeemer and the redeemAmount.
@@ -766,34 +768,16 @@ contract CCollateralCapErc20NoInterest is CTokenNoInterest, CCollateralCapErc20I
         initializeAccountCollateralTokens(liquidator);
         initializeAccountCollateralTokens(borrower);
 
+        uint256 collateralTokens = getCollateralTokens(seizeTokens, borrower);
+
         /* Fail if seize not allowed */
         require(
-            comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens) == 0,
+            comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, collateralTokens) == 0,
             "rejected"
         );
 
-        /*
-         * Return if seizeTokens is zero.
-         * Put behind `seizeAllowed` for accuring potential COMP rewards.
-         */
-        if (seizeTokens == 0) {
-            return uint256(Error.NO_ERROR);
-        }
-
         /* Fail if borrower = liquidator */
         require(borrower != liquidator, "invalid account pair");
-
-        /**
-         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
-         * The buffer between the two values will be seized first.
-         * bufferTokens = accountTokens[borrower] - accountCollateralTokens[borrower]
-         * collateralTokens = seizeTokens - bufferTokens
-         */
-        uint256 bufferTokens = sub_(accountTokens[borrower], accountCollateralTokens[borrower]);
-        uint256 collateralTokens = 0;
-        if (seizeTokens > bufferTokens) {
-            collateralTokens = seizeTokens - bufferTokens;
-        }
 
         /*
          * We calculate the new borrower and liquidator token balances and token collateral balances, failing on underflow/overflow:
