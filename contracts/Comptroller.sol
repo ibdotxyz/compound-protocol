@@ -223,7 +223,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @return Whether or not the market is listed or delisted
      */
     function isMarketListedOrDelisted(address cTokenAddress) public view returns (bool) {
-        return markets[cTokenAddress].isListed || isMarkertDelisted[cTokenAddress];
+        return markets[cTokenAddress].isListed || isMarketDelisted[cTokenAddress];
     }
 
     /*** Policy Hooks ***/
@@ -1078,7 +1078,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /**
      * @notice Remove the market from the markets mapping
      * @param cToken The address of the market (token) to delist
-     * @param force If True, hard delist the market by not adding to `isMarkertDelisted`
+     * @param force If True, hard delist the market by not adding to `isMarketDelisted`
      */
     function _delistMarket(CToken cToken, bool force) external {
         require(msg.sender == admin, "admin only");
@@ -1093,7 +1093,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         if (!force) {
             // Soft delist.
             require(isMarketListed(address(cToken)), "market not listed");
-            isMarkertDelisted[address(cToken)] = true;
+            isMarketDelisted[address(cToken)] = true;
         } else {
             // Hard delist.
             require(isMarketListedOrDelisted(address(cToken)), "market not listed or soft delisted");
