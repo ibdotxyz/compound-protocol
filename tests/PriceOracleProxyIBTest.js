@@ -16,14 +16,22 @@ describe('PriceOracleProxyIB', () => {
   const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
   let root, accounts;
-  let oracle, cUsdc, cDai, cOther;
+  let oracle, cUsdc, cOther;
   let registry, reference;
+
+  let setBandPrice = async (token, price) => {
+    const symbol = await call(token, "symbol");
+    await send(reference, "setReferenceData", [symbol, price, 0, 0]);
+  };
+
+  let setChainLinkPrice = async (base, quote, price) => {
+    await send(registry, "setAnswer", [base, quote, price]);
+  }
 
   beforeEach(async () => {
     [root, ...accounts] = saddle.accounts;
     const comptroller = await makeComptroller();
     cUsdc = await makeCToken({comptroller: comptroller, supportMarket: true, underlyingOpts: {decimals: 6}});
-    cDai = await makeCToken({comptroller: comptroller, supportMarket: true});
     cOther = await makeCToken({comptroller: comptroller, supportMarket: true});
     registry = await makeMockRegistry();
     reference = await makeMockReference();
@@ -49,29 +57,11 @@ describe('PriceOracleProxyIB', () => {
   });
 
   describe("getUnderlyingPrice", () => {
-    let readAndVerifyProxyPrice = async (token, price) =>{
-      let proxyPrice = await call(oracle, "getUnderlyingPrice", [token._address]);
-      expect(Number(proxyPrice)).toEqual(price * 1e18);
-    };
-
-    let setChainLinkPrice = async (token, base, quote, price) => {
-      await send(registry, "setAnswer", [base, quote, price]);
-      await send(
-        oracle,
-        "_setAggregators",
-        [[token], [base], [quote]]);
-    }
-
-    let setBandPrice = async (token, price) => {
-      const symbol = await call(token, "symbol");
-      await send(reference, "setReferenceData", [symbol, price, 0, 0]);
-      await send(oracle, "_setReferences", [[token._address], [symbol]]);
-    };
-
     it("gets price from chainlink", async () => {
       const price = '100000000'; // 1e8
 
-      await setChainLinkPrice(cOther.underlying._address, cOther.underlying._address, usdAddress, price);
+      await setChainLinkPrice(cOther.underlying._address, usdAddress, price);
+      await send(oracle, "_setAggregators", [[cOther.underlying._address], [cOther.underlying._address], [usdAddress]]);
       let proxyPrice = await call(oracle, "getUnderlyingPrice", [cOther._address]);
       expect(proxyPrice).toEqual(etherMantissa(1).toFixed());
     });
@@ -80,8 +70,9 @@ describe('PriceOracleProxyIB', () => {
       const price = '100000000'; // 1e8
       const ethPrice = '300000000000'; // 3000 * 1e8
 
-      await setChainLinkPrice(cOther.underlying._address, cOther.underlying._address, ethAddress, price);
-      await setChainLinkPrice(ethAddress, ethAddress, usdAddress, ethPrice);
+      await setChainLinkPrice(cOther.underlying._address, ethAddress, price);
+      await setChainLinkPrice(ethAddress, usdAddress, ethPrice);
+      await send(oracle, "_setAggregators", [[cOther.underlying._address], [cOther.underlying._address], [ethAddress]]);
       let proxyPrice = await call(oracle, "getUnderlyingPrice", [cOther._address]);
       expect(proxyPrice).toEqual(etherMantissa(3000).toFixed());
     });
@@ -90,6 +81,8 @@ describe('PriceOracleProxyIB', () => {
       const price = etherMantissa(1);
 
       await setBandPrice(cOther.underlying, price);
+      const symbol = await call(cOther.underlying, "symbol");
+      await send(oracle, "_setReferences", [[cOther.underlying._address], [symbol]]);
       let proxyPrice = await call(oracle, "getUnderlyingPrice", [cOther._address]);
       expect(proxyPrice).toEqual(price.toFixed());
     });
@@ -134,7 +127,10 @@ describe('PriceOracleProxyIB', () => {
     });
 
     it("set aggregators successfully", async () => {
+      const price = '100000000'; // 1e8
+
       // token - ETH
+      await setChainLinkPrice(token._address, ethAddress, price);
       expect(await send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]])).toSucceed();
 
       let aggregator = await call(oracle, "aggregators", [token._address]);
@@ -143,6 +139,7 @@ describe('PriceOracleProxyIB', () => {
       expect(aggregator.isUsed).toEqual(true);
 
       // token - USD
+      await setChainLinkPrice(token._address, usdAddress, price);
       expect(await send(oracle, "_setAggregators", [[token._address], [token._address], [usdAddress]])).toSucceed();
 
       aggregator = await call(oracle, "aggregators", [token._address]);
@@ -151,6 +148,7 @@ describe('PriceOracleProxyIB', () => {
       expect(aggregator.isUsed).toEqual(true);
 
       // BTC - ETH
+      await setChainLinkPrice(btcAddress, ethAddress, price);
       expect(await send(oracle, "_setAggregators", [[wbtcAddress], [btcAddress], [ethAddress]])).toSucceed();
 
       aggregator = await call(oracle, "aggregators", [wbtcAddress]);
@@ -160,9 +158,8 @@ describe('PriceOracleProxyIB', () => {
     });
 
     it("fails to set aggregators for non-admin", async () => {
-      await expect(send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]], {from: accounts[0]})).rejects.toRevert("revert only the admin or guardian may set the aggregators");
+      await expect(send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]], {from: accounts[0]})).rejects.toRevert("revert only the admin may set the aggregators");
       expect(await send(oracle, "_setGuardian", [accounts[0]])).toSucceed();
-      await expect(send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]], {from: accounts[0]})).rejects.toRevert("revert guardian may only clear the aggregator");
     });
 
     it("fails to set aggregators for mismatched data", async () => {
@@ -180,9 +177,12 @@ describe('PriceOracleProxyIB', () => {
       await expect(send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]])).rejects.toRevert("revert aggregator not enabled");
     });
 
+    it("fails to set aggregators for invalid price", async () => {
+      await expect(send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]])).rejects.toRevert("revert invalid price");
+    });
+
     it("clear aggregators successfully", async () => {
-      expect(await send(oracle, "_setGuardian", [accounts[0]])).toSucceed();
-      expect(await send(oracle, "_setAggregators", [[token._address], [address(0)], [address(0)]], {from: accounts[0]})).toSucceed();
+      expect(await send(oracle, "_setAggregators", [[token._address], [address(0)], [address(0)]])).toSucceed();
 
       const aggregator = await call(oracle, "aggregators", [token._address]);
       expect(aggregator.base).toEqual(address(0));
@@ -191,14 +191,110 @@ describe('PriceOracleProxyIB', () => {
     });
   });
 
+  describe('_disableAggregator', () => {
+    const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
+    let token;
+
+    beforeEach(async () => {
+      token = await makeToken();
+    });
+
+    it('disables aggregator successfully', async () => {
+      await send(oracle, "_setGuardian", [accounts[0]]);
+
+      const price = '100000000'; // 1e8
+
+      // token - ETH
+      await setChainLinkPrice(token._address, ethAddress, price);
+      await send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]]);
+
+      expect(await send(oracle, "_disableAggregator", [token._address], {from: accounts[0]})).toSucceed();
+
+      let aggregator = await call(oracle, "aggregators", [token._address]);
+      expect(aggregator.base).toEqual(token._address);
+      expect(aggregator.quote).toEqual(ethAddress);
+      expect(aggregator.isUsed).toEqual(false);
+    });
+
+    it('fails to disable aggregator for not admin nor guardian', async () => {
+      await expect(send(oracle, "_disableAggregator", [token._address], {from: accounts[0]})).rejects.toRevert("revert only the admin or guardian may disable the aggregator");
+    });
+
+    it('fails to disable aggregator for not used', async () => {
+      await expect(send(oracle, "_disableAggregator", [token._address])).rejects.toRevert("revert aggregator not used");
+    });
+  });
+
+  describe('_enableAggregator', () => {
+    const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
+    let token;
+
+    beforeEach(async () => {
+      token = await makeToken();
+    });
+
+    it('enables aggregator successfully', async () => {
+      await send(oracle, "_setGuardian", [accounts[0]]);
+
+      const price = '100000000'; // 1e8
+
+      // token - ETH
+      await setChainLinkPrice(token._address, ethAddress, price);
+      await send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]]);
+      await send(oracle, "_disableAggregator", [token._address], {from: accounts[0]});
+
+      expect(await send(oracle, "_enableAggregator", [token._address], {from: accounts[0]})).toSucceed();
+
+      let aggregator = await call(oracle, "aggregators", [token._address]);
+      expect(aggregator.base).toEqual(token._address);
+      expect(aggregator.quote).toEqual(ethAddress);
+      expect(aggregator.isUsed).toEqual(true);
+    });
+
+    it('fails to enable aggregator for not admin nor guardian', async () => {
+      await expect(send(oracle, "_enableAggregator", [token._address], {from: accounts[0]})).rejects.toRevert("revert only the admin or guardian may enable the aggregator");
+    });
+
+    it('fails to enable aggregator for already used', async () => {
+      const price = '100000000'; // 1e8
+
+      // token - ETH
+      await setChainLinkPrice(token._address, ethAddress, price);
+      await send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]]);
+
+      await expect(send(oracle, "_enableAggregator", [token._address])).rejects.toRevert("revert aggregator is already used");
+    });
+
+    it('fails to enable aggregator for aggregator not enabled', async () => {
+      const price = '100000000'; // 1e8
+
+      // token - ETH
+      await setChainLinkPrice(token._address, ethAddress, price);
+      await send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]]);
+      await send(oracle, "_disableAggregator", [token._address]);
+
+      await send(registry, 'setFeedDisabled', [true]);
+      await expect(send(oracle, "_enableAggregator", [token._address])).rejects.toRevert("revert aggregator not enabled");
+    });
+
+    it('fails to enable aggregator for invalid price', async () => {
+      const price = '100000000'; // 1e8
+
+      // token - ETH
+      await setChainLinkPrice(token._address, ethAddress, price);
+      await send(oracle, "_setAggregators", [[token._address], [token._address], [ethAddress]]);
+      await send(oracle, "_disableAggregator", [token._address]);
+
+      await setChainLinkPrice(token._address, ethAddress, 0);
+      await expect(send(oracle, "_enableAggregator", [token._address])).rejects.toRevert("revert invalid price");
+    });
+  });
+
   describe("_setReferences", () => {
     let token;
     let symbol;
-
-    let setBandPrice = async (token, symbol, price) => {
-      await send(reference, "setReferenceData", [symbol, price, 0, 0]);
-      await send(oracle, "_setReferences", [[token._address], [symbol]]);
-    };
 
     beforeEach(async () => {
       token = await makeToken();
@@ -207,7 +303,7 @@ describe('PriceOracleProxyIB', () => {
 
     it("set references successfully", async () => {
       const price = etherMantissa(1);
-      await setBandPrice(token, symbol, price);
+      await setBandPrice(token, price);
       expect(await send(oracle, "_setReferences", [[token._address], [symbol]])).toSucceed();
 
       const reference = await call(oracle, "references", [token._address]);
@@ -216,9 +312,8 @@ describe('PriceOracleProxyIB', () => {
     });
 
     it("fails to set references for non-admin", async () => {
-      await expect(send(oracle, "_setReferences", [[token._address], [symbol]], {from: accounts[0]})).rejects.toRevert("revert only the admin or guardian may set the references");
+      await expect(send(oracle, "_setReferences", [[token._address], [symbol]], {from: accounts[0]})).rejects.toRevert("revert only the admin may set the references");
       expect(await send(oracle, "_setGuardian", [accounts[0]])).toSucceed();
-      await expect(send(oracle, "_setReferences", [[token._address], [symbol]], {from: accounts[0]})).rejects.toRevert("revert guardian may only clear the reference");
     });
 
     it("fails to set references for mismatched data", async () => {
@@ -231,12 +326,90 @@ describe('PriceOracleProxyIB', () => {
     });
 
     it("clear references successfully", async () => {
-      expect(await send(oracle, "_setGuardian", [accounts[0]])).toSucceed();
-      expect(await send(oracle, "_setReferences", [[token._address], ['']], {from: accounts[0]})).toSucceed();
+      expect(await send(oracle, "_setReferences", [[token._address], ['']])).toSucceed();
 
       const reference = await call(oracle, "references", [token._address]);
       expect(reference.symbol).toEqual('');
       expect(reference.isUsed).toEqual(false);
+    });
+  });
+
+  describe('_disableReference', () => {
+    let token;
+    let symbol;
+
+    beforeEach(async () => {
+      token = await makeToken();
+      symbol = await call(token, "symbol");
+    });
+
+    it('disables reference successfully', async () => {
+      await send(oracle, "_setGuardian", [accounts[0]]);
+
+      const price = etherMantissa(1);
+      await setBandPrice(token, price);
+      await send(oracle, "_setReferences", [[token._address], [symbol]]);
+
+      expect(await send(oracle, "_disableReference", [token._address], {from: accounts[0]})).toSucceed();
+
+      const reference = await call(oracle, "references", [token._address]);
+      expect(reference.symbol).toEqual(symbol);
+      expect(reference.isUsed).toEqual(false);
+    });
+
+    it('fails to disable reference for not admin nor guardian', async () => {
+      await expect(send(oracle, "_disableReference", [token._address], {from: accounts[0]})).rejects.toRevert("revert only the admin or guardian may disable the reference");
+    });
+
+    it('fails to disable reference for not used', async () => {
+      await expect(send(oracle, "_disableReference", [token._address])).rejects.toRevert("revert reference not used");
+    });
+  });
+
+  describe('_enableReference', () => {
+    let token;
+    let symbol;
+
+    beforeEach(async () => {
+      token = await makeToken();
+      symbol = await call(token, "symbol");
+    });
+
+    it('enables reference successfully', async () => {
+      await send(oracle, "_setGuardian", [accounts[0]]);
+
+      const price = etherMantissa(1);
+      await setBandPrice(token, price);
+      await send(oracle, "_setReferences", [[token._address], [symbol]]);
+      await send(oracle, "_disableReference", [token._address], {from: accounts[0]});
+
+      expect(await send(oracle, "_enableReference", [token._address], {from: accounts[0]})).toSucceed();
+
+      const reference = await call(oracle, "references", [token._address]);
+      expect(reference.symbol).toEqual(symbol);
+      expect(reference.isUsed).toEqual(true);
+    });
+
+    it('fails to enable reference for not admin nor guardian', async () => {
+      await expect(send(oracle, "_enableReference", [token._address], {from: accounts[0]})).rejects.toRevert("revert only the admin or guardian may enable the reference");
+    });
+
+    it('fails to enable reference for already used', async () => {
+      const price = etherMantissa(1);
+      await setBandPrice(token, price);
+      await send(oracle, "_setReferences", [[token._address], [symbol]]);
+
+      await expect(send(oracle, "_enableReference", [token._address])).rejects.toRevert("revert reference is already used");
+    });
+
+    it('fails to enable reference for invalid price', async () => {
+      const price = etherMantissa(1);
+      await setBandPrice(token, price);
+      await send(oracle, "_setReferences", [[token._address], [symbol]]);
+      await send(oracle, "_disableReference", [token._address]);
+
+      await setBandPrice(token, 0);
+      await expect(send(oracle, "_enableReference", [token._address])).rejects.toRevert("revert invalid price");
     });
   });
 });
