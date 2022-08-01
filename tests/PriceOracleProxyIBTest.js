@@ -7,7 +7,6 @@ const {
   makeComptroller,
   makeToken,
   makeCToken,
-  makePriceOracle,
   makeMockRegistry,
   makeMockReference,
 } = require('./Utils/Compound');
@@ -17,7 +16,7 @@ describe('PriceOracleProxyIB', () => {
   const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
   let root, accounts;
-  let oracle, backingOracle, cUsdc, cDai, cOther;
+  let oracle, cUsdc, cDai, cOther;
   let registry, reference;
 
   beforeEach(async () => {
@@ -29,19 +28,13 @@ describe('PriceOracleProxyIB', () => {
     registry = await makeMockRegistry();
     reference = await makeMockReference();
 
-    backingOracle = await makePriceOracle();
-    oracle = await deploy('PriceOracleProxyIB', [root, backingOracle._address, registry._address, reference._address]);
+    oracle = await deploy('PriceOracleProxyIB', [root, registry._address, reference._address]);
   });
 
   describe("constructor", () => {
     it("sets address of admin", async () => {
       let configuredGuardian = await call(oracle, "admin");
       expect(configuredGuardian).toEqual(root);
-    });
-
-    it("sets address of backingOracle", async () => {
-      let v1PriceOracle = await call(oracle, "v1PriceOracle");
-      expect(v1PriceOracle).toEqual(backingOracle._address);
     });
 
     it("sets address of registry", async () => {
@@ -56,20 +49,6 @@ describe('PriceOracleProxyIB', () => {
   });
 
   describe("getUnderlyingPrice", () => {
-    let setAndVerifyBackingPrice = async (cToken, price) => {
-      await send(
-        backingOracle,
-        "setUnderlyingPrice",
-        [cToken._address, etherMantissa(price)]);
-
-      let backingOraclePrice = await call(
-        backingOracle,
-        "assetPrices",
-        [cToken.underlying._address]);
-
-      expect(Number(backingOraclePrice)).toEqual(price * 1e18);
-    };
-
     let readAndVerifyProxyPrice = async (token, price) =>{
       let proxyPrice = await call(oracle, "getUnderlyingPrice", [token._address]);
       expect(Number(proxyPrice)).toEqual(price * 1e18);
@@ -115,18 +94,10 @@ describe('PriceOracleProxyIB', () => {
       expect(proxyPrice).toEqual(price.toFixed());
     });
 
-    it("fallbacks to price oracle v1", async () => {
-      await setAndVerifyBackingPrice(cOther, 11);
-      await readAndVerifyProxyPrice(cOther, 11);
-
-      await setAndVerifyBackingPrice(cOther, 37);
-      await readAndVerifyProxyPrice(cOther, 37);
-    });
-
-    it("returns 0 for token without a price", async () => {
+    it("reverts for token without a price", async () => {
       let unlistedToken = await makeCToken({comptroller: cUsdc.comptroller});
 
-      await readAndVerifyProxyPrice(unlistedToken, 0);
+      await expect(call(oracle, "getUnderlyingPrice", [unlistedToken._address])).rejects.toRevert("revert no price");
     });
   });
 

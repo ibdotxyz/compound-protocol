@@ -5,7 +5,6 @@ import "./Denominations.sol";
 import "./PriceOracle.sol";
 import "./interfaces/BandReference.sol";
 import "./interfaces/FeedRegistryInterface.sol";
-import "./interfaces/V1PriceOracleInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
@@ -40,9 +39,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /// @notice Band Reference
     mapping(address => ReferenceInfo) public references;
 
-    /// @notice The v1 price oracle, maintain by CREAM
-    V1PriceOracleInterface public v1PriceOracle;
-
     /// @notice The ChainLink registry address
     FeedRegistryInterface public reg;
 
@@ -54,18 +50,15 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
 
     /**
      * @param admin_ The address of admin to set aggregators
-     * @param v1PriceOracle_ The v1 price oracle
      * @param registry_ The address of ChainLink registry
      * @param reference_ The address of Band reference
      */
     constructor(
         address admin_,
-        address v1PriceOracle_,
         address registry_,
         address reference_
     ) public {
         admin = admin_;
-        v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
         reg = FeedRegistryInterface(registry_);
         ref = StdReferenceInterface(reference_);
     }
@@ -97,8 +90,7 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
             return getNormalizedPrice(price, underlying);
         }
 
-        // Get price from v1.
-        return getPriceFromV1(underlying);
+        revert("no price");
     }
 
     /*** Internal fucntions ***/
@@ -139,15 +131,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     function getNormalizedPrice(uint256 price, address tokenAddress) internal view returns (uint256) {
         uint256 underlyingDecimals = EIP20Interface(tokenAddress).decimals();
         return mul_(price, 10**(18 - underlyingDecimals));
-    }
-
-    /**
-     * @notice Get price from v1 price oracle
-     * @param token The token to get the price of
-     * @return The price
-     */
-    function getPriceFromV1(address token) internal view returns (uint256) {
-        return v1PriceOracle.assetPrices(token);
     }
 
     /*** Admin or guardian functions ***/
