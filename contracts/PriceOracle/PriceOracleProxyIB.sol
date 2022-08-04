@@ -5,6 +5,7 @@ import "./Denominations.sol";
 import "./PriceOracle.sol";
 import "./interfaces/BandReference.sol";
 import "./interfaces/FeedRegistryInterface.sol";
+import "./interfaces/V1PriceOracleInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
@@ -45,20 +46,30 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /// @notice The BAND reference address
     StdReferenceInterface public ref;
 
+    /// @notice The v1 price oracle, maintained by Iron Bank
+    /// @dev v1PriceOracle only provides price for deprecated markets (not supported by ChainLink and Band)
+    V1PriceOracleInterface public v1PriceOracle;
+
+    /// @notice Deprecated markets that use v1 oracle
+    mapping(address => bool) public deprecatedMarkets;
+
     /// @notice Quote symbol we used for BAND reference contract
     string public constant QUOTE_SYMBOL = "USD";
 
     /**
      * @param admin_ The address of admin to set aggregators
+     * @param v1PriceOracle_ The v1 price oracle
      * @param registry_ The address of ChainLink registry
      * @param reference_ The address of Band reference
      */
     constructor(
         address admin_,
+        address v1PriceOracle_,
         address registry_,
         address reference_
     ) public {
         admin = admin_;
+        v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
         reg = FeedRegistryInterface(registry_);
         ref = StdReferenceInterface(reference_);
     }
@@ -88,6 +99,11 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         if (referenceInfo.isUsed) {
             uint256 price = getPriceFromBAND(referenceInfo.symbol);
             return getNormalizedPrice(price, underlying);
+        }
+
+        // Get price from v1.
+        if (deprecatedMarkets[underlying]) {
+            return getPriceFromV1(underlying);
         }
 
         revert("no price");
@@ -133,12 +149,22 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         return mul_(price, 10**(18 - underlyingDecimals));
     }
 
+    /**
+     * @notice Get price from v1 price oracle
+     * @param token The token to get the price of
+     * @return The price
+     */
+    function getPriceFromV1(address token) internal view returns (uint256) {
+        return v1PriceOracle.assetPrices(token);
+    }
+
     /*** Admin or guardian functions ***/
 
     event AggregatorUpdated(address tokenAddress, address base, address quote, bool isUsed);
     event ReferenceUpdated(address tokenAddress, string symbol, bool isUsed);
     event SetGuardian(address guardian);
     event SetAdmin(address admin);
+    event DeprecatedMarketUpdated(address tokenAddress, bool isDeprecated);
 
     /**
      * @notice Set guardian for price oracle proxy
@@ -279,5 +305,22 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
 
         referenceInfo.isUsed = true;
         emit ReferenceUpdated(tokenAddress, referenceInfo.symbol, referenceInfo.isUsed);
+    }
+
+    /**
+     * @notice Update deprecated markets for multiple tokens
+     * @param tokenAddresses The list of underlying tokens
+     * @param deprecated The list of tokens are deprecated or not
+     */
+    function _updateDeprecatedMarkets(address[] calldata tokenAddresses, bool[] calldata deprecated) external {
+        require(msg.sender == admin, "only the admin may update the deprecated markets");
+        require(tokenAddresses.length == deprecated.length, "mismatched data");
+        for (uint256 i = 0; i < tokenAddresses.length; i++) {
+            if (deprecatedMarkets[tokenAddresses[i]] != deprecated[i]) {
+                deprecatedMarkets[tokenAddresses[i]] = deprecated[i];
+
+                emit DeprecatedMarketUpdated(tokenAddresses[i], deprecated[i]);
+            }
+        }
     }
 }

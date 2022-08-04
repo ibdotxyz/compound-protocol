@@ -7,6 +7,7 @@ const {
   makeComptroller,
   makeToken,
   makeCToken,
+  makePriceOracle,
   makeMockRegistry,
   makeMockReference,
 } = require('./Utils/Compound');
@@ -16,7 +17,7 @@ describe('PriceOracleProxyIB', () => {
   const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
   let root, accounts;
-  let oracle, cUsdc, cOther;
+  let oracle, backingOracle, cUsdc, cOther;
   let registry, reference;
 
   let setBandPrice = async (token, price) => {
@@ -28,6 +29,10 @@ describe('PriceOracleProxyIB', () => {
     await send(registry, "setAnswer", [base, quote, price]);
   }
 
+  let setV1Price = async (cToken, price) => {
+    await send(backingOracle, "setUnderlyingPrice", [cToken._address, price]);
+  }
+
   beforeEach(async () => {
     [root, ...accounts] = saddle.accounts;
     const comptroller = await makeComptroller();
@@ -35,14 +40,20 @@ describe('PriceOracleProxyIB', () => {
     cOther = await makeCToken({comptroller: comptroller, supportMarket: true});
     registry = await makeMockRegistry();
     reference = await makeMockReference();
+    backingOracle = await makePriceOracle();
 
-    oracle = await deploy('PriceOracleProxyIB', [root, registry._address, reference._address]);
+    oracle = await deploy('PriceOracleProxyIB', [root, backingOracle._address, registry._address, reference._address]);
   });
 
   describe("constructor", () => {
     it("sets address of admin", async () => {
       let configuredGuardian = await call(oracle, "admin");
       expect(configuredGuardian).toEqual(root);
+    });
+
+    it("sets address of backingOracle", async () => {
+      let v1PriceOracle = await call(oracle, "v1PriceOracle");
+      expect(v1PriceOracle).toEqual(backingOracle._address);
     });
 
     it("sets address of registry", async () => {
@@ -83,6 +94,15 @@ describe('PriceOracleProxyIB', () => {
       await setBandPrice(cOther.underlying, price);
       const symbol = await call(cOther.underlying, "symbol");
       await send(oracle, "_setReferences", [[cOther.underlying._address], [symbol]]);
+      let proxyPrice = await call(oracle, "getUnderlyingPrice", [cOther._address]);
+      expect(proxyPrice).toEqual(price.toFixed());
+    });
+
+    it("gets price from v1 for deprecated market", async () => {
+      const price = etherMantissa(1);
+
+      await send(oracle, "_updateDeprecatedMarkets", [[cOther.underlying._address], [true]]);
+      await setV1Price(cOther, price);
       let proxyPrice = await call(oracle, "getUnderlyingPrice", [cOther._address]);
       expect(proxyPrice).toEqual(price.toFixed());
     });
@@ -410,6 +430,32 @@ describe('PriceOracleProxyIB', () => {
 
       await setBandPrice(token, 0);
       await expect(send(oracle, "_enableReference", [token._address])).rejects.toRevert("revert invalid price");
+    });
+  });
+
+  describe("_updateDeprecatedMarkets", () => {
+    let token;
+
+    beforeEach(async () => {
+      token = await makeToken();
+    });
+
+    it("update deprecated markets successfully", async () => {
+      expect(await call(oracle, "deprecatedMarkets", [token._address])).toEqual(false);
+      expect(await send(oracle, "_updateDeprecatedMarkets", [[token._address], [true]])).toSucceed();
+      expect(await call(oracle, "deprecatedMarkets", [token._address])).toEqual(true);
+
+      expect(await send(oracle, "_updateDeprecatedMarkets", [[token._address], [true]])).toSucceed(); // succeed but nothing change
+      expect(await call(oracle, "deprecatedMarkets", [token._address])).toEqual(true);
+    });
+
+    it("fails to update deprecated markets for non-admin", async () => {
+      await expect(send(oracle, "_updateDeprecatedMarkets", [[token._address], [true]], {from: accounts[0]})).rejects.toRevert("revert only the admin may update the deprecated markets");
+    });
+
+    it("fails to update deprecated markets for mismatched data", async () => {
+      await expect(send(oracle, "_updateDeprecatedMarkets", [[token._address], []])).rejects.toRevert("revert mismatched data");
+      await expect(send(oracle, "_updateDeprecatedMarkets", [[], [true]])).rejects.toRevert("revert mismatched data");
     });
   });
 });
