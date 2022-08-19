@@ -97,27 +97,27 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     CToken[] public allMarkets;
 
     /// @notice The portion of compRate that each market currently receives
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => uint256) public compSpeeds;
 
     /// @notice The COMP market supply state for each market
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => CompMarketState) public compSupplyState;
 
     /// @notice The COMP market borrow state for each market
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => CompMarketState) public compBorrowState;
 
     /// @notice The COMP borrow index for each market for each supplier as of the last time they accrued COMP
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => mapping(address => uint256)) public compSupplierIndex;
 
     /// @notice The COMP borrow index for each market for each borrower as of the last time they accrued COMP
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => mapping(address => uint256)) public compBorrowerIndex;
 
     /// @notice The COMP accrued but not yet transferred to each user
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => uint256) public compAccrued;
 
     /// @notice The borrowCapGuardian can set borrowCaps to any number for any market. Lowering the borrow cap could disable borrowing on the given market.
@@ -133,7 +133,7 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     mapping(address => uint256) public supplyCaps;
 
     /// @notice creditLimits allowed specific protocols to borrow and repay without collateral.
-    /// @dev This storage is depreacted.
+    /// @dev This storage is deprecated.
     mapping(address => uint256) internal _oldCreditLimits;
 
     /// @notice flashloanGuardianPaused can pause flash loan as a safety mechanism.

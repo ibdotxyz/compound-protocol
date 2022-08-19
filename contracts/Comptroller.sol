@@ -592,7 +592,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     ) external returns (uint256) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!seizeGuardianPaused, "seize is paused");
-        require(!isCreditAccount(borrower, cTokenBorrowed), "cannot sieze from credit account");
+        require(!isCreditAccount(borrower, cTokenBorrowed), "cannot seize from credit account");
 
         // Shh - currently unused
         liquidator;
@@ -1141,7 +1141,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
-     * @notice Set the given supply caps for the given cToken markets. Supplying that brings total supplys to or above supply cap will revert.
+     * @notice Set the given supply caps for the given cToken markets. Supplying that brings total supplies to or above supply cap will revert.
      * @dev Admin or pauseGuardian function to set the supply caps. A supply cap of 0 corresponds to unlimited supplying. If the total borrows
      *      already exceeded the cap, it will prevent anyone to borrow.
      * @param cTokens The addresses of the markets (tokens) to change the supply caps for

@@ -1104,7 +1104,7 @@ contract ComptrollerG1 is ComptrollerV1Storage, ComptrollerInterface, Comptrolle
     }
 
     /**
-     * @notice Set the given supply caps for the given cToken markets. Supplying that brings total supplys to or above supply cap will revert.
+     * @notice Set the given supply caps for the given cToken markets. Supplying that brings total supplies to or above supply cap will revert.
      * @dev Admin or supplyCapGuardian function to set the supply caps. A supply cap of 0 corresponds to unlimited supplying.
      * @param cTokens The addresses of the markets (tokens) to change the supply caps for
      * @param newSupplyCaps The new supply cap values in underlying to be set. A value of 0 corresponds to unlimited supplying.

@@ -551,7 +551,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
         /*
          * Return if mintAmount is zero.
-         * Put behind `mintAllowed` for accuring potential COMP rewards.
+         * Put behind `mintAllowed` for accruing potential COMP rewards.
          */
         if (mintAmount == 0) {
             return (uint256(Error.NO_ERROR), 0);
@@ -656,7 +656,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
         /*
          * Return if redeemTokensIn and redeemAmountIn are zero.
-         * Put behind `redeemAllowed` for accuring potential COMP rewards.
+         * Put behind `redeemAllowed` for accruing potential COMP rewards.
          */
         if (redeemTokensIn == 0 && redeemAmountIn == 0) {
             return uint256(Error.NO_ERROR);
@@ -726,7 +726,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
         /*
          * Return if seizeTokens is zero.
-         * Put behind `seizeAllowed` for accuring potential COMP rewards.
+         * Put behind `seizeAllowed` for accruing potential COMP rewards.
          */
         if (seizeTokens == 0) {
             return uint256(Error.NO_ERROR);

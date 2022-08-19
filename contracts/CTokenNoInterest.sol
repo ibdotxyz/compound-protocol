@@ -566,7 +566,7 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
      * @notice Borrows are repaid by another user (possibly the borrower).
      * @param payer the account paying off the borrow
      * @param borrower the account with the debt being payed off
-     * @param repayAmount the amount of undelrying tokens being returned
+     * @param repayAmount the amount of underlying tokens being returned
      * @param isNative The amount is in native or not
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual repayment amount.
      */
@@ -1066,7 +1066,7 @@ contract CTokenNoInterest is CTokenInterface, Exponential, TokenErrorReporter {
     ) internal returns (uint256);
 
     /**
-     * @dev Performs a transfer out, ideally returning an explanatory error code upon failure tather than reverting.
+     * @dev Performs a transfer out, ideally returning an explanatory error code upon failure rather than reverting.
      *  If caller has not called checked protocol's balance, may revert due to insufficient cash held in the contract.
      *  If caller has checked protocol's balance, and verified it is >= amount, this should not revert in normal conditions.
      */
