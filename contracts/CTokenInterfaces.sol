@@ -415,7 +415,7 @@ contract CCapableErc20Interface is CErc20Interface, CSupplyCapStorage {
 
     /*** User Interface ***/
 
-    function gulp() external;
+    function gulp() public;
 }
 
 contract CCollateralCapErc20Interface is CCapableErc20Interface, CCollateralCapStorage {
