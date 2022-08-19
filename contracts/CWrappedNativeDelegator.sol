@@ -51,7 +51,7 @@ contract CWrappedNativeDelegator is CTokenInterface, CWrappedNativeInterface, CD
             )
         );
 
-        // New implementations always get set via the settor (post-initialize)
+        // New implementations always get set via the setter (post-initialize)
         _setImplementation(implementation_, false, becomeImplementationData);
 
         // Set the proper admin now that initialization is done

@@ -554,7 +554,7 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
     function decreaseUserCollateralInternal(address account, uint256 amount) internal {
         /*
          * Return if amount is zero.
-         * Put behind `redeemAllowed` for accuring potential COMP rewards.
+         * Put behind `redeemAllowed` for accruing potential COMP rewards.
          */
         if (amount == 0) {
             return;
@@ -593,7 +593,7 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
 
         /*
          * Return if mintAmount is zero.
-         * Put behind `mintAllowed` for accuring potential COMP rewards.
+         * Put behind `mintAllowed` for accruing potential COMP rewards.
          */
         if (mintAmount == 0) {
             return (uint256(Error.NO_ERROR), 0);
