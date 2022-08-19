@@ -140,7 +140,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     /**
      * @notice Absorb excess cash into reserves.
      */
-    function gulp() public nonReentrant {
+    function gulp() external nonReentrant {
         uint256 cashOnChain = getCashOnChain();
         uint256 cashPrior = getCashPrior();
 

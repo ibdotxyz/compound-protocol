@@ -29,7 +29,7 @@ contract CCollateralCapErc20Delegate is CCollateralCapErc20 {
         require(msg.sender == admin, "admin only");
 
         // Set internal cash when becoming implementation
-        gulp();
+        internalCash = getCashOnChain();
 
         // Set CToken version in comptroller
         ComptrollerInterfaceExtension(address(comptroller)).updateCTokenVersion(

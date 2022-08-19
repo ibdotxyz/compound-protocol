@@ -215,7 +215,7 @@ contract CCollateralCapErc20Delegator is CTokenInterface, CCollateralCapErc20Int
      * @notice Gulps excess contract cash to reserves
      * @dev This function calculates excess ERC20 gained from a ERC20.transfer() call and adds the excess to reserves.
      */
-    function gulp() public {
+    function gulp() external {
         delegateAndReturn();
     }
 
