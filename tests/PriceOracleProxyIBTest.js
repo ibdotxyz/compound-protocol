@@ -122,6 +122,10 @@ describe('PriceOracleProxyIB', () => {
     it("fails to set admin for non-admin", async () => {
       await expect(send(oracle, "_setAdmin", [accounts[0]], {from: accounts[0]})).rejects.toRevert("revert only the admin may set new admin");
     });
+
+    it("fails to set admin invalid admin", async () => {
+      await expect(send(oracle, "_setAdmin", [address(0)])).rejects.toRevert("revert invalid admin");
+    });
   });
 
   describe("_setGuardian", () => {
