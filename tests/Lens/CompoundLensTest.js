@@ -487,28 +487,4 @@ describe('CompoundLens', () => {
       });
     });
   });
-
-  describe('getClaimableSushiRewards', () => {
-    let root, minter, accounts;
-    let cToken;
-    beforeEach(async () => {
-      [root, minter, ...accounts] = saddle.accounts;
-      cToken = await makeCToken({kind: 'cslp', comptrollerOpts: {kind: 'bool'}, exchangeRate});
-      await preMint(cToken, minter, mintAmount, mintTokens, exchangeRate);
-    });
-
-    it('gets claimable rewards', async () => {
-      const sushiAddress = await call(cToken, 'sushi', []);
-      const masterChefAddress = await call(cToken, 'masterChef', []);
-
-      const masterChef = await saddle.getContractAt('MasterChef', masterChefAddress);
-
-      expect(await quickMint(cToken, minter, mintAmount)).toSucceed();
-
-      await fastForward(masterChef, 1);
-
-      const pendingRewards = await call(compoundLens, 'getClaimableSushiRewards', [[cToken._address], sushiAddress, minter]);
-      expect(pendingRewards).toEqualNumber(await call(masterChef, 'sushiPerBlock', []));
-    })
-  });
 });

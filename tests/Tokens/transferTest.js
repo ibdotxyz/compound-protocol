@@ -70,36 +70,6 @@ describe('CToken', function () {
       await expect(send(cToken, 'transfer', [accounts[0], 50])).rejects.toRevert("revert transferVerify rejected transfer");
     });
 
-    it("transfers cslp token", async () => {
-      const cToken = await makeCToken({kind: 'cslp', comptrollerOpts: {kind: 'bool'}});
-      const sushiAddress = await call(cToken, 'sushi', []);
-      const masterChefAddress = await call(cToken, 'masterChef', []);
-
-      const sushi = await saddle.getContractAt('SushiToken', sushiAddress);
-      const masterChef = await saddle.getContractAt('MasterChef', masterChefAddress);
-
-      await preMint(cToken, minter, mintAmount, exchangeRate);
-      expect(await mintFresh(cToken, minter, mintAmount)).toSucceed();
-      expect(await call(cToken, 'balanceOf', [minter])).toEqualNumber(mintTokens);
-
-      await fastForward(cToken, 1);
-      await fastForward(masterChef, 1);
-
-      await send(cToken, 'transfer', [accounts[0], mintTokens], { from: minter });
-      expect(await call(cToken, 'balanceOf', [minter])).toEqualNumber(0);
-      expect(await call(cToken, 'balanceOf', [accounts[0]])).toEqualNumber(mintTokens);
-
-      expect(await balanceOf(sushi, minter)).toEqualNumber(etherMantissa(0));
-      expect(await call(cToken, 'xSushiUserAccrued', [minter])).toEqualNumber(etherMantissa(1));
-
-      await fastForward(cToken, 1);
-      await fastForward(masterChef, 1);
-
-      await send(cToken, 'claimSushi', [minter], { from: minter });
-      expect(await balanceOf(sushi, minter)).toEqualNumber(etherMantissa(1));
-      expect(await call(cToken, 'xSushiUserAccrued', [minter])).toEqualNumber(etherMantissa(0));
-    });
-
     describe("transfer ccollateralcap token", () => {
       it("transfers collateral tokens", async () => {
         const cToken = await makeCToken({kind: 'ccollateralcap', supportMarket: true});
