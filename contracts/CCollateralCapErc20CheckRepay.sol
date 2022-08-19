@@ -141,7 +141,7 @@ contract CCollateralCapErc20CheckRepay is CTokenCheckRepay, CCollateralCapErc20I
     /**
      * @notice Absorb excess cash into reserves.
      */
-    function gulp() public nonReentrant {
+    function gulp() external nonReentrant {
         uint256 cashOnChain = getCashOnChain();
         uint256 cashPrior = getCashPrior();
 

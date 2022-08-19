@@ -318,16 +318,6 @@ async function makeToken(opts = {}) {
     const symbol = opts.symbol || 'OMG';
     const name = opts.name || `Erc20 ${symbol}`;
     return await deploy('ERC20Harness', [quantity, name, decimals, symbol]);
-  } else if (kind == 'ctoken') {
-    const quantity = etherUnsigned(dfn(opts.quantity, 1e25));
-    const decimals = etherUnsigned(dfn(opts.decimals, 18));
-    const symbol = opts.symbol || 'cOMG';
-    const name = opts.name || `Compound ${symbol}`;
-
-    const comptroller = await makeComptroller({kind: "compound"});
-    const cToken = await deploy('CTokenHarness', [quantity, name, decimals, symbol, comptroller._address]);
-    await send(comptroller, '_supportMarket', [cToken._address, 0]);
-    return cToken;
   } else if (kind == 'curveToken') {
     const quantity = etherUnsigned(dfn(opts.quantity, 1e25));
     const decimals = etherUnsigned(dfn(opts.decimals, 18));
