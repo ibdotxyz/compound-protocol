@@ -29,7 +29,7 @@ contract CCapableErc20Delegate is CCapableErc20 {
         require(msg.sender == admin, "only the admin may call _becomeImplementation");
 
         // Set internal cash when becoming implementation
-        internalCash = getCashOnChain();
+        gulp();
     }
 
     /**
