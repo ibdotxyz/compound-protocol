@@ -182,6 +182,7 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
      */
     function _setAdmin(address _admin) external {
         require(msg.sender == admin, "only the admin may set new admin");
+        require(_admin != address(0), "invalid admin");
         admin = _admin;
         emit SetAdmin(admin);
     }
