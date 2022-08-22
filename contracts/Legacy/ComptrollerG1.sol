@@ -1177,20 +1177,20 @@ contract ComptrollerG1 is ComptrollerV1Storage, ComptrollerInterface, Comptrolle
         }
 
         // Save current value for inclusion in log
-        address oldPauseGuardian = pauseGuardian;
+        address oldPauseGuardian = guardian;
 
-        // Store pauseGuardian with value newPauseGuardian
-        pauseGuardian = newPauseGuardian;
+        // Store guardian with value newPauseGuardian
+        guardian = newPauseGuardian;
 
         // Emit NewPauseGuardian(OldPauseGuardian, NewPauseGuardian)
-        emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
+        emit NewPauseGuardian(oldPauseGuardian, guardian);
 
         return uint256(Error.NO_ERROR);
     }
 
     function _setMintPaused(CToken cToken, bool state) public returns (bool) {
         require(markets[address(cToken)].isListed, "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == guardian || msg.sender == admin, "only pause guardian and admin can pause");
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         mintGuardianPaused[address(cToken)] = state;
@@ -1200,7 +1200,7 @@ contract ComptrollerG1 is ComptrollerV1Storage, ComptrollerInterface, Comptrolle
 
     function _setBorrowPaused(CToken cToken, bool state) public returns (bool) {
         require(markets[address(cToken)].isListed, "cannot pause a market that is not listed");
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == guardian || msg.sender == admin, "only pause guardian and admin can pause");
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         borrowGuardianPaused[address(cToken)] = state;
@@ -1209,7 +1209,7 @@ contract ComptrollerG1 is ComptrollerV1Storage, ComptrollerInterface, Comptrolle
     }
 
     function _setTransferPaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == guardian || msg.sender == admin, "only pause guardian and admin can pause");
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         transferGuardianPaused = state;
@@ -1218,7 +1218,7 @@ contract ComptrollerG1 is ComptrollerV1Storage, ComptrollerInterface, Comptrolle
     }
 
     function _setSeizePaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "only pause guardian and admin can pause");
+        require(msg.sender == guardian || msg.sender == admin, "only pause guardian and admin can pause");
         require(msg.sender == admin || state == true, "only admin can unpause");
 
         seizeGuardianPaused = state;

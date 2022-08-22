@@ -34,8 +34,8 @@ interface ComptrollerMethods {
   pendingAdmin(): Callable<string>
   _setPendingAdmin(string): Sendable<number>
   _acceptAdmin(): Sendable<number>
-  _setPauseGuardian(string): Sendable<number>
-  pauseGuardian(): Callable<string>
+  _setGuardian(string): Sendable<number>
+  guardian(): Callable<string>
   _setMintPaused(market: string, state: boolean): Sendable<boolean>
   _setBorrowPaused(market: string, state: boolean): Sendable<boolean>
   _setFlashloanPaused(market: string, state: boolean): Sendable<boolean>
