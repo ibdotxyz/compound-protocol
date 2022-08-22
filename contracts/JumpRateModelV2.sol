@@ -4,9 +4,8 @@ import "./InterestRateModel.sol";
 import "./SafeMath.sol";
 
 /**
- * @title Compound's JumpRateModel Contract V2
+ * @title Iron Bank's JumpRateModel Contract V2
  * @author Compound (modified by Dharma Labs)
- * @notice Version 2 modifies Version 1 by enabling updateable parameters.
  */
 contract JumpRateModelV2 is InterestRateModel {
     using SafeMath for uint256;
@@ -18,11 +17,6 @@ contract JumpRateModelV2 is InterestRateModel {
         uint256 kink,
         uint256 roof
     );
-
-    /**
-     * @notice The address of the owner, i.e. the Timelock contract, which can update parameters directly
-     */
-    address public owner;
 
     /**
      * @notice The approximate number of blocks per year that is assumed by the interest rate model
@@ -66,38 +60,14 @@ contract JumpRateModelV2 is InterestRateModel {
      * @param jumpMultiplierPerYear The multiplierPerBlock after hitting a specified utilization point
      * @param kink_ The utilization point at which the jump multiplier is applied
      * @param roof_ The utilization point at which the borrow rate is fixed
-     * @param owner_ The address of the owner, i.e. the Timelock contract (which has the ability to update parameters directly)
      */
     constructor(
         uint256 baseRatePerYear,
         uint256 multiplierPerYear,
         uint256 jumpMultiplierPerYear,
         uint256 kink_,
-        uint256 roof_,
-        address owner_
-    ) public {
-        owner = owner_;
-
-        updateJumpRateModelInternal(baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear, kink_, roof_);
-    }
-
-    /**
-     * @notice Update the parameters of the interest rate model (only callable by owner, i.e. Timelock)
-     * @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
-     * @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     * @param jumpMultiplierPerYear The multiplierPerBlock after hitting a specified utilization point
-     * @param kink_ The utilization point at which the jump multiplier is applied
-     * @param roof_ The utilization point at which the borrow rate is fixed
-     */
-    function updateJumpRateModel(
-        uint256 baseRatePerYear,
-        uint256 multiplierPerYear,
-        uint256 jumpMultiplierPerYear,
-        uint256 kink_,
         uint256 roof_
-    ) external {
-        require(msg.sender == owner, "only the owner may call this function.");
-
+    ) public {
         updateJumpRateModelInternal(baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear, kink_, roof_);
     }
 
