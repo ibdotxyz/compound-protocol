@@ -93,7 +93,7 @@ Test "cToken Transfer paused"
     Assert Equal (Erc20 cZRX TokenBalance Geoff) (Exactly 50e9)
     Assert Equal (Erc20 cZRX TokenBalance Coburn) Zero
     -- Pause and attempt transfer
-    Comptroller SetPauseGuardian Coburn
+    Comptroller SetGuardian Coburn
     From Coburn (Comptroller SetGuardianPaused "Transfer" True)
     AllowFailures
     Transfer Geoff Torrey 10e9 cZRX

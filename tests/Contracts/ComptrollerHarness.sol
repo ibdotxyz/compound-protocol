@@ -22,7 +22,7 @@ contract ComptrollerHarness is Comptroller {
     constructor() public Comptroller() {}
 
     function setPauseGuardian(address harnessedPauseGuardian) public {
-        pauseGuardian = harnessedPauseGuardian;
+        guardian = harnessedPauseGuardian;
     }
 
     function harnessFastForward(uint256 blocks) public returns (uint256) {

@@ -259,7 +259,7 @@ describe('Comptroller', () => {
 
     it("fails if called by guardian", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      await send(cToken.comptroller, '_setPauseGuardian', [accounts[0]]);
+      await send(cToken.comptroller, '_setGuardian', [accounts[0]]);
 
       await expect(send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit], {from: accounts[0]})).rejects.toRevert("revert admin or credit limit manager only");
     });
@@ -296,21 +296,21 @@ describe('Comptroller', () => {
 
     it("fails if not called by guardian", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      await send(cToken.comptroller, '_setPauseGuardian', [accounts[0]]);
+      await send(cToken.comptroller, '_setGuardian', [accounts[0]]);
 
-      await expect(send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[1]})).rejects.toRevert("revert pause guardian only");
+      await expect(send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[1]})).rejects.toRevert("revert guardian only");
     });
 
     it("fails for invalid market", async () => {
       const cToken = await makeCToken();
-      await send(cToken.comptroller, '_setPauseGuardian', [accounts[0]]);
+      await send(cToken.comptroller, '_setGuardian', [accounts[0]]);
 
       await expect(send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[0]})).rejects.toRevert("revert market not listed");
     });
 
     it("succeeds and pauses credit limit", async () => {
       const cToken = await makeCToken({supportMarket: true});
-      await send(cToken.comptroller, '_setPauseGuardian', [accounts[0]]);
+      await send(cToken.comptroller, '_setGuardian', [accounts[0]]);
 
       const result1 = await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit]);
       expect(result1).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: creditLimit.toString()});
@@ -318,7 +318,7 @@ describe('Comptroller', () => {
       const _creditLimit = await call(cToken.comptroller, 'creditLimits', [accounts[0], cToken._address]);
       expect(_creditLimit).toEqual(creditLimit.toString());
 
-      // Pause guardian pauses the limit.
+      // Guardian pauses the limit.
       const result3 = await send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[0]});
       expect(result3).toHaveLog('CreditLimitChanged', {protocol: accounts[0], market: cToken._address, creditLimit: 1}); // 1 Wei
 

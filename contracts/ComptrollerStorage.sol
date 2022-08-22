@@ -74,11 +74,11 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     mapping(address => Market) public markets;
 
     /**
-     * @notice The Pause Guardian can pause certain actions as a safety mechanism.
+     * @notice The Guardian can pause certain actions as a safety mechanism.
      *  Actions which allow users to remove their own assets cannot be paused.
      *  Liquidation / seizing / transfer can only be paused globally, not by market.
      */
-    address public pauseGuardian;
+    address public guardian;
     bool public _mintGuardianPaused;
     bool public _borrowGuardianPaused;
     bool public transferGuardianPaused;
