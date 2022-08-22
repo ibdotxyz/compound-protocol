@@ -1295,6 +1295,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
     /**
      * @notice Sets protocol's credit limit by market
+     * @dev Setting credit limit to 0 would change the protocol to a normal account
      * @param protocol The address of the protocol
      * @param market The market
      * @param creditLimit The credit limit
@@ -1304,16 +1305,30 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address market,
         uint256 creditLimit
     ) public {
-        require(
-            msg.sender == admin || msg.sender == creditLimitManager || msg.sender == pauseGuardian,
-            "admin or credit limit manager or pause guardian only"
-        );
-        require(isMarketListed(market), "market not listed");
+        require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
 
-        if (_creditLimits[protocol][market] == 0 && creditLimit != 0) {
-            // Only admin or credit limit manager could set a new credit limit.
-            require(msg.sender == admin || msg.sender == creditLimitManager, "admin or credit limit manager only");
-        }
+        _setCreditLimitInternal(protocol, market, creditLimit);
+    }
+
+    /**
+     * @notice Pause protocol's credit limit by market
+     * @param protocol The address of the protocol
+     * @param market The market
+     */
+    function _pauseCreditLimit(address protocol, address market) public {
+        require(msg.sender == pauseGuardian, "pause guardian only");
+
+        // We set the credit limit to a very small amount (1 Wei) to avoid the protocol becoming a normal account.
+        // Normal account could be liquidated or repaid, which might cause some additional problem.
+        _setCreditLimitInternal(protocol, market, 1);
+    }
+
+    function _setCreditLimitInternal(
+        address protocol,
+        address market,
+        uint256 creditLimit
+    ) internal {
+        require(isMarketListed(market), "market not listed");
 
         _creditLimits[protocol][market] = creditLimit;
         emit CreditLimitChanged(protocol, market, creditLimit);
