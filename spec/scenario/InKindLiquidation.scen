@@ -437,7 +437,7 @@ Test "when seize is paused"
     Assert Equal (Comptroller Liquidity Geoff) -1e18
     -- Okay, so we should be able to liquidate, so let's do that.
     Prep Torrey 2e18 BAT cBAT
-    Comptroller SetPauseGuardian Coburn
+    Comptroller SetGuardian Coburn
     From Coburn (Comptroller SetGuardianPaused "Seize" True)
     AllowFailures
     Liquidate Torrey "->" Geoff 2e18 cBAT "Seizing" cBAT

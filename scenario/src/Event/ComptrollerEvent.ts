@@ -252,12 +252,12 @@ async function acceptAdmin(world: World, from: string, comptroller: Comptroller)
   return world;
 }
 
-async function setPauseGuardian(world: World, from: string, comptroller: Comptroller, newPauseGuardian: string): Promise<World> {
-  let invokation = await invoke(world, comptroller.methods._setPauseGuardian(newPauseGuardian), from, ComptrollerErrorReporter);
+async function setGuardian(world: World, from: string, comptroller: Comptroller, newPauseGuardian: string): Promise<World> {
+  let invokation = await invoke(world, comptroller.methods._setGuardian(newPauseGuardian), from, ComptrollerErrorReporter);
 
   world = addAction(
     world,
-    `Comptroller: ${describeUser(world, from)} sets pause guardian to ${newPauseGuardian}`,
+    `Comptroller: ${describeUser(world, from)} sets guardian to ${newPauseGuardian}`,
     invokation
   );
 
@@ -539,17 +539,17 @@ export function comptrollerCommands() {
       (world, from, {comptroller}) => acceptAdmin(world, from, comptroller)
     ),
     new Command<{comptroller: Comptroller, newPauseGuardian: AddressV}>(`
-        #### SetPauseGuardian
+        #### SetGuardian
 
-        * "Comptroller SetPauseGuardian newPauseGuardian:<Address>" - Sets the PauseGuardian for the Comptroller
-          * E.g. "Comptroller SetPauseGuardian Geoff"
+        * "Comptroller SetGuardian newPauseGuardian:<Address>" - Sets the Guardian for the Comptroller
+          * E.g. "Comptroller SetGuardian Geoff"
       `,
-      "SetPauseGuardian",
+      "SetGuardian",
       [
         new Arg("comptroller", getComptroller, {implicit: true}),
         new Arg("newPauseGuardian", getAddressV)
       ],
-      (world, from, {comptroller, newPauseGuardian}) => setPauseGuardian(world, from, comptroller, newPauseGuardian.val)
+      (world, from, {comptroller, newPauseGuardian}) => setGuardian(world, from, comptroller, newPauseGuardian.val)
     ),
 
     new Command<{comptroller: Comptroller, action: StringV, isPaused: BoolV}>(`

@@ -40,7 +40,7 @@ contract PriceOracleProxyFTM is PriceOracle, Exponential {
     /// @notice Band Reference
     mapping(address => ReferenceInfo) public references;
 
-    /// @notice The v1 price oracle, maintain by CREAM
+    /// @notice The v1 price oracle, maintain by Iron Bank
     V1PriceOracleInterface public v1PriceOracle;
 
     /// @notice Quote symbol we used for BAND reference contract
@@ -158,6 +158,7 @@ contract PriceOracleProxyFTM is PriceOracle, Exponential {
      */
     function _setAdmin(address _admin) external {
         require(msg.sender == admin, "only the admin may set new admin");
+        require(_admin != address(0), "invalid admin");
         admin = _admin;
         emit SetAdmin(admin);
     }

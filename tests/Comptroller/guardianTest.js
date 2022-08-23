@@ -9,47 +9,47 @@ describe('Comptroller', () => {
     [root, ...accounts] = saddle.accounts;
   });
 
-  describe("_setPauseGuardian", () => {
+  describe("_setGuardian", () => {
     beforeEach(async () => {
       comptroller = await makeComptroller();
     });
 
     describe("failing", () => {
       it("emits a failure log if not sent by admin", async () => {
-        let result = await send(comptroller, '_setPauseGuardian', [root], {from: accounts[1]});
+        let result = await send(comptroller, '_setGuardian', [root], {from: accounts[1]});
         expect(result).toHaveTrollFailure('UNAUTHORIZED', 'SET_PAUSE_GUARDIAN_OWNER_CHECK');
       });
 
-      it("does not change the pause guardian", async () => {
-        let pauseGuardian = await call(comptroller, 'pauseGuardian');
-        expect(pauseGuardian).toEqual(address(0));
-        await send(comptroller, '_setPauseGuardian', [root], {from: accounts[1]});
+      it("does not change the guardian", async () => {
+        let guardian = await call(comptroller, 'guardian');
+        expect(guardian).toEqual(address(0));
+        await send(comptroller, '_setGuardian', [root], {from: accounts[1]});
 
-        pauseGuardian = await call(comptroller, 'pauseGuardian');
-        expect(pauseGuardian).toEqual(address(0));
+        guardian = await call(comptroller, 'guardian');
+        expect(guardian).toEqual(address(0));
       });
     });
 
 
-    describe('succesfully changing pause guardian', () => {
+    describe('succesfully changing guardian', () => {
       let result;
 
       beforeEach(async () => {
         comptroller = await makeComptroller();
 
-        result = await send(comptroller, '_setPauseGuardian', [accounts[1]]);
+        result = await send(comptroller, '_setGuardian', [accounts[1]]);
       });
 
-      it('emits new pause guardian event', async () => {
+      it('emits new guardian event', async () => {
         expect(result).toHaveLog(
-          'NewPauseGuardian',
-          {newPauseGuardian: accounts[1], oldPauseGuardian: address(0)}
+          'NewGuardian',
+          {newGuardian: accounts[1], oldGuardian: address(0)}
         );
       });
 
-      it('changes pending pause guardian', async () => {
-        let pauseGuardian = await call(comptroller, 'pauseGuardian');
-        expect(pauseGuardian).toEqual(accounts[1]);
+      it('changes pending guardian', async () => {
+        let guardian = await call(comptroller, 'guardian');
+        expect(guardian).toEqual(accounts[1]);
       });
     });
   });
@@ -62,20 +62,20 @@ describe('Comptroller', () => {
 
     let globalMethods = ["Transfer", "Seize"];
     describe('succeeding', () => {
-      let pauseGuardian;
+      let guardian;
       beforeEach(async () => {
-        pauseGuardian = accounts[1];
-        await send(comptroller, '_setPauseGuardian', [accounts[1]], {from: root});
+        guardian = accounts[1];
+        await send(comptroller, '_setGuardian', [accounts[1]], {from: root});
       });
 
       globalMethods.forEach(async (method) => {
-        it(`only pause guardian or admin can pause ${method}`, async () => {
+        it(`only guardian or admin can pause ${method}`, async () => {
           await expect(send(comptroller, `_set${method}Paused`, [true], {from: accounts[2]})).rejects.toRevert("revert guardian or admin only");
           await expect(send(comptroller, `_set${method}Paused`, [false], {from: accounts[2]})).rejects.toRevert("revert guardian or admin only");
         });
 
-        it(`PauseGuardian can pause of ${method}GuardianPaused`, async () => {
-          result = await send(comptroller, `_set${method}Paused`, [true], {from: pauseGuardian});
+        it(`Guardian can pause of ${method}GuardianPaused`, async () => {
+          result = await send(comptroller, `_set${method}Paused`, [true], {from: guardian});
           expect(result).toHaveLog(`ActionPaused`, {action: method, pauseState: true});
 
           let camelCase = method.charAt(0).toLowerCase() + method.substring(1);
@@ -83,7 +83,7 @@ describe('Comptroller', () => {
           state = await call(comptroller, `${camelCase}GuardianPaused`);
           expect(state).toEqual(true);
 
-          await expect(send(comptroller, `_set${method}Paused`, [false], {from: pauseGuardian})).rejects.toRevert("revert admin only");
+          await expect(send(comptroller, `_set${method}Paused`, [false], {from: guardian})).rejects.toRevert("revert admin only");
           result = await send(comptroller, `_set${method}Paused`, [false]);
 
           expect(result).toHaveLog(`ActionPaused`, {action: method, pauseState: false});
@@ -93,7 +93,7 @@ describe('Comptroller', () => {
         });
 
         it(`pauses ${method}`, async() => {
-          await send(comptroller, `_set${method}Paused`, [true], {from: pauseGuardian});
+          await send(comptroller, `_set${method}Paused`, [true], {from: guardian});
           switch (method) {
           case "Transfer":
             await expect(
@@ -116,20 +116,20 @@ describe('Comptroller', () => {
 
     let marketMethods = ["Borrow", "Mint", "Flashloan"];
     describe('succeeding', () => {
-      let pauseGuardian;
+      let guardian;
       beforeEach(async () => {
-        pauseGuardian = accounts[1];
-        await send(comptroller, '_setPauseGuardian', [accounts[1]], {from: root});
+        guardian = accounts[1];
+        await send(comptroller, '_setGuardian', [accounts[1]], {from: root});
       });
 
       marketMethods.forEach(async (method) => {
-        it(`only pause guardian or admin can pause ${method}`, async () => {
+        it(`only guardian or admin can pause ${method}`, async () => {
           await expect(send(comptroller, `_set${method}Paused`, [cToken._address, true], {from: accounts[2]})).rejects.toRevert("revert guardian or admin only");
           await expect(send(comptroller, `_set${method}Paused`, [cToken._address, false], {from: accounts[2]})).rejects.toRevert("revert guardian or admin only");
         });
 
-        it(`PauseGuardian can pause of ${method}GuardianPaused`, async () => {
-          result = await send(comptroller, `_set${method}Paused`, [cToken._address, true], {from: pauseGuardian});
+        it(`Guardian can pause of ${method}GuardianPaused`, async () => {
+          result = await send(comptroller, `_set${method}Paused`, [cToken._address, true], {from: guardian});
           expect(result).toHaveLog(`ActionPaused`, {cToken: cToken._address, action: method, pauseState: true});
 
           let camelCase = method.charAt(0).toLowerCase() + method.substring(1);
@@ -137,7 +137,7 @@ describe('Comptroller', () => {
           state = await call(comptroller, `${camelCase}GuardianPaused`, [cToken._address]);
           expect(state).toEqual(true);
 
-          await expect(send(comptroller, `_set${method}Paused`, [cToken._address, false], {from: pauseGuardian})).rejects.toRevert("revert admin only");
+          await expect(send(comptroller, `_set${method}Paused`, [cToken._address, false], {from: guardian})).rejects.toRevert("revert admin only");
           result = await send(comptroller, `_set${method}Paused`, [cToken._address, false]);
 
           expect(result).toHaveLog(`ActionPaused`, {cToken: cToken._address, action: method, pauseState: false});
@@ -147,7 +147,7 @@ describe('Comptroller', () => {
         });
 
         it(`pauses ${method}`, async() => {
-          await send(comptroller, `_set${method}Paused`, [cToken._address, true], {from: pauseGuardian});
+          await send(comptroller, `_set${method}Paused`, [cToken._address, true], {from: guardian});
           switch (method) {
           case "Mint":
             await expect(call(comptroller, 'mintAllowed', [address(1), address(2), 1])).rejects.toRevert('revert market not listed');
