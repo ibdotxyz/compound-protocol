@@ -39,39 +39,6 @@ contract ComptrollerHarness is Comptroller {
     }
 }
 
-// CompoundComptrollerHarness is only used for CCTokenHarness
-contract CompoundComptrollerHarness is ComptrollerHarness {
-    address compAddress;
-    mapping(address => uint256) public compAccrued;
-
-    constructor() public ComptrollerHarness() {}
-
-    function setCompAddress(address compAddress_) public {
-        compAddress = compAddress_;
-    }
-
-    function getCompAddress() public view returns (address) {
-        return compAddress;
-    }
-
-    function setCompAccrued(address user, uint256 userAccrued) public {
-        compAccrued[user] = userAccrued;
-    }
-
-    function claimComp(
-        address[] memory holders,
-        CToken[] memory cTokens,
-        bool borrowers,
-        bool suppliers
-    ) public {
-        // unused
-        holders;
-        cTokens;
-        borrowers;
-        suppliers;
-    }
-}
-
 contract ComptrollerBorked {
     function _become(
         Unitroller unitroller,
