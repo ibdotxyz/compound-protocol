@@ -62,7 +62,7 @@ Test "Borrow some BAT from Excess Cash"
 
 Test "Borrow some BAT reverts if borrow is paused"
     NewComptroller price:1.0
-    Comptroller SetPauseGuardian Coburn
+    Comptroller SetGuardian Coburn
     NewCToken ZRX cZRX
     NewCToken BAT cBAT
     GiveCToken cBAT 10e18 BAT -- Faucet some bat to borrow

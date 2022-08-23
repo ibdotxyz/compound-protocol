@@ -312,16 +312,16 @@ export function comptrollerFetchers() {
       (world, {comptroller, cToken}) => checkCTokenVersion(world, comptroller, cToken)
     ),
     new Fetcher<{comptroller: Comptroller}, AddressV>(`
-        #### PauseGuardian
+        #### Guardian
 
-        * "PauseGuardian" - Returns the Comptrollers's PauseGuardian
-        * E.g. "Comptroller PauseGuardian"
+        * "Guardian" - Returns the Comptrollers's Guardian
+        * E.g. "Comptroller Guardian"
         `,
-        "PauseGuardian",
+        "Guardian",
         [
           new Arg("comptroller", getComptroller, {implicit: true})
         ],
-        async (world, {comptroller}) => new AddressV(await comptroller.methods.pauseGuardian().call())
+        async (world, {comptroller}) => new AddressV(await comptroller.methods.guardian().call())
     ),
 
     new Fetcher<{comptroller: Comptroller}, BoolV>(`

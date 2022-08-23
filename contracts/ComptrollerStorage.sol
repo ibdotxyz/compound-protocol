@@ -74,11 +74,11 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     mapping(address => Market) public markets;
 
     /**
-     * @notice The Pause Guardian can pause certain actions as a safety mechanism.
+     * @notice The Guardian can pause certain actions as a safety mechanism.
      *  Actions which allow users to remove their own assets cannot be paused.
      *  Liquidation / seizing / transfer can only be paused globally, not by market.
      */
-    address public pauseGuardian;
+    address public guardian;
     bool public _mintGuardianPaused;
     bool public _borrowGuardianPaused;
     bool public transferGuardianPaused;
@@ -90,19 +90,21 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     /// @notice A list of all markets
     CToken[] public allMarkets;
 
-    // @notice The borrowCapGuardian can set borrowCaps to any number for any market. Lowering the borrow cap could disable borrowing on the given market.
+    /// @notice The borrowCapGuardian can set borrowCaps to any number for any market. Lowering the borrow cap could disable borrowing on the given market.
+    /// @dev This storage is deprecated.
     address public borrowCapGuardian;
 
-    // @notice Borrow caps enforced by borrowAllowed for each cToken address. Defaults to zero which corresponds to unlimited borrowing.
+    /// @notice Borrow caps enforced by borrowAllowed for each cToken address. Defaults to zero which corresponds to unlimited borrowing.
     mapping(address => uint256) public borrowCaps;
 
-    // @notice The supplyCapGuardian can set supplyCaps to any number for any market. Lowering the supply cap could disable supplying to the given market.
+    /// @notice The supplyCapGuardian can set supplyCaps to any number for any market. Lowering the supply cap could disable supplying to the given market.
+    /// @dev This storage is deprecated.
     address public supplyCapGuardian;
 
-    // @notice Supply caps enforced by mintAllowed for each cToken address. Defaults to zero which corresponds to unlimited supplying.
+    /// @notice Supply caps enforced by mintAllowed for each cToken address. Defaults to zero which corresponds to unlimited supplying.
     mapping(address => uint256) public supplyCaps;
 
-    // @notice creditLimits allowed specific protocols to borrow and repay specific markets without collateral.
+    /// @notice creditLimits allowed specific protocols to borrow and repay specific markets without collateral.
     mapping(address => mapping(address => uint256)) public creditLimits;
 
     /// @notice liquidityMining the liquidity mining module that handles the LM rewards distribution.
