@@ -124,7 +124,7 @@ Test "Guardian can set borrow caps"
     ListedEtherToken cETH initialExchangeRate:0.005e9
     SetCollateralFactor cZRX collateralFactor:0.5
     SetCollateralFactor cETH collateralFactor:0.5
-    Comptroller SetPauseGuardian Geoff
+    Comptroller SetGuardian Geoff
     From Geoff (Comptroller SetMarketBorrowCaps (cZRX) (0.5e18))
     AllowFailures
     From Robert (Comptroller SetMarketBorrowCaps (cZRX) (0.01e18)) -- Robert still can't...
@@ -132,7 +132,7 @@ Test "Guardian can set borrow caps"
     From Robert (Comptroller SetMarketBorrowCaps (cZRX) (0.01e18))
     Assert Revert
     Assert Equal (Comptroller BorrowCaps cZRX) (Exactly 0.5e18)
-    Assert Equal (Comptroller PauseGuardian) (User Geoff Address)
+    Assert Equal (Comptroller Guardian) (User Geoff Address)
 
 Test "SetBorrowCaps works correctly too"
     NewComptroller price:1.0

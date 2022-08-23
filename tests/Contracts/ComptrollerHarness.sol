@@ -22,7 +22,7 @@ contract ComptrollerHarness is Comptroller {
     constructor() public Comptroller() {}
 
     function setPauseGuardian(address harnessedPauseGuardian) public {
-        pauseGuardian = harnessedPauseGuardian;
+        guardian = harnessedPauseGuardian;
     }
 
     function harnessFastForward(uint256 blocks) public returns (uint256) {
@@ -36,39 +36,6 @@ contract ComptrollerHarness is Comptroller {
 
     function getBlockNumber() public view returns (uint256) {
         return blockNumber;
-    }
-}
-
-// CompoundComptrollerHarness is only used for CCTokenHarness
-contract CompoundComptrollerHarness is ComptrollerHarness {
-    address compAddress;
-    mapping(address => uint256) public compAccrued;
-
-    constructor() public ComptrollerHarness() {}
-
-    function setCompAddress(address compAddress_) public {
-        compAddress = compAddress_;
-    }
-
-    function getCompAddress() public view returns (address) {
-        return compAddress;
-    }
-
-    function setCompAccrued(address user, uint256 userAccrued) public {
-        compAccrued[user] = userAccrued;
-    }
-
-    function claimComp(
-        address[] memory holders,
-        CToken[] memory cTokens,
-        bool borrowers,
-        bool suppliers
-    ) public {
-        // unused
-        holders;
-        cTokens;
-        borrowers;
-        suppliers;
     }
 }
 

@@ -64,10 +64,10 @@ Test "Guardian can set supply caps"
     NewComptroller price:1.0
     ListedCToken ZRX cZRX
     SetCollateralFactor cZRX collateralFactor:0.5
-    Comptroller SetPauseGuardian Geoff
+    Comptroller SetGuardian Geoff
     From Geoff (Comptroller SetMarketSupplyCaps (cZRX) (0.5e18))
     Assert Equal (Comptroller SupplyCaps cZRX) (Exactly 0.5e18)
-    Assert Equal (Comptroller PauseGuardian) (User Geoff Address)
+    Assert Equal (Comptroller Guardian) (User Geoff Address)
     AllowFailures
     From Robert (Comptroller SetMarketSupplyCaps (cZRX) (0.01e18)) -- Robert still can't...
     Assert Revert

@@ -4,8 +4,8 @@ import "./InterestRateModel.sol";
 import "./SafeMath.sol";
 
 /**
- * @title CREAM's TripleSlopeRateModel Contract
- * @author C.R.E.A.M. Finance
+ * @title Iron Bank's TripleSlopeRateModel Contract
+ * @author Iron Bank
  */
 contract TripleSlopeRateModel is InterestRateModel {
     using SafeMath for uint256;
@@ -18,11 +18,6 @@ contract TripleSlopeRateModel is InterestRateModel {
         uint256 kink2,
         uint256 roof
     );
-
-    /**
-     * @notice The address of the owner, i.e. the Timelock contract, which can update parameters directly
-     */
-    address public owner;
 
     /**
      * @notice The approximate number of blocks per year that is assumed by the interest rate model
@@ -72,7 +67,6 @@ contract TripleSlopeRateModel is InterestRateModel {
      * @param kink1_ The utilization point at which the interest rate is fixed
      * @param kink2_ The utilization point at which the jump multiplier is applied
      * @param roof_ The utilization point at which the borrow rate is fixed
-     * @param owner_ The address of the owner, i.e. the Timelock contract (which has the ability to update parameters directly)
      */
     constructor(
         uint256 baseRatePerYear,
@@ -80,33 +74,8 @@ contract TripleSlopeRateModel is InterestRateModel {
         uint256 jumpMultiplierPerYear,
         uint256 kink1_,
         uint256 kink2_,
-        uint256 roof_,
-        address owner_
-    ) public {
-        owner = owner_;
-
-        updateTripleRateModelInternal(baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear, kink1_, kink2_, roof_);
-    }
-
-    /**
-     * @notice Update the parameters of the interest rate model (only callable by owner, i.e. Timelock)
-     * @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by 1e18)
-     * @param multiplierPerYear The rate of increase in interest rate wrt utilization (scaled by 1e18)
-     * @param jumpMultiplierPerYear The multiplierPerBlock after hitting a specified utilization point
-     * @param kink1_ The utilization point at which the interest rate is fixed
-     * @param kink2_ The utilization point at which the jump multiplier is applied
-     * @param roof_ The utilization point at which the borrow rate is fixed
-     */
-    function updateTripleRateModel(
-        uint256 baseRatePerYear,
-        uint256 multiplierPerYear,
-        uint256 jumpMultiplierPerYear,
-        uint256 kink1_,
-        uint256 kink2_,
         uint256 roof_
-    ) external {
-        require(msg.sender == owner, "only the owner may call this function.");
-
+    ) public {
         updateTripleRateModelInternal(baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear, kink1_, kink2_, roof_);
     }
 

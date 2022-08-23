@@ -157,7 +157,7 @@ contract PriceOracleProxy is PriceOracle, Exponential, Denominations {
         return getTokenPrice(underlying);
     }
 
-    /*** Internal fucntions ***/
+    /*** Internal functions ***/
 
     /**
      * @notice Get the price of a specific token. Return 1e18 is it's WETH.
@@ -186,7 +186,7 @@ contract PriceOracleProxy is PriceOracle, Exponential, Denominations {
     /**
      * @notice Get price from ChainLink
      * @param base The base token that ChainLink aggregator gets the price of
-     * @param quote The quote token, currenlty support ETH and USD
+     * @param quote The quote token, currently support ETH and USD
      * @return The price, scaled by 1e18
      */
     function getPriceFromChainlink(address base, address quote) internal view returns (uint256) {

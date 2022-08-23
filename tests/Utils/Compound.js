@@ -2,7 +2,6 @@
 
 const { dfn } = require('./JS');
 const {
-  encodeParameters,
   etherBalance,
   etherMantissa,
   etherUnsigned,
@@ -32,25 +31,6 @@ async function makeComptroller(opts = {}) {
     await send(comptroller, '_setPriceOracle', [priceOracle._address]);
 
     return Object.assign(comptroller, { priceOracle });
-  }
-
-  if (kind == 'compound') {
-    const unitroller = opts.unitroller || await deploy('Unitroller');
-    const comptroller = await deploy('CompoundComptrollerHarness');
-    const priceOracle = opts.priceOracle || await makePriceOracle(opts.priceOracleOpts);
-    const closeFactor = etherMantissa(dfn(opts.closeFactor, .051));
-    const liquidationIncentive = etherMantissa(1);
-    const comp = opts.comp || await deploy('Comp', [opts.compOwner || root]);
-
-    await send(unitroller, '_setPendingImplementation', [comptroller._address]);
-    await send(comptroller, '_become', [unitroller._address]);
-    mergeInterface(unitroller, comptroller);
-    await send(unitroller, '_setLiquidationIncentive', [liquidationIncentive]);
-    await send(unitroller, '_setCloseFactor', [closeFactor]);
-    await send(unitroller, '_setPriceOracle', [priceOracle._address]);
-    await send(unitroller, 'setCompAddress', [comp._address]); // harness only
-
-    return Object.assign(unitroller, { priceOracle, comp });
   }
 
   if (kind == 'unitroller') {
@@ -165,51 +145,6 @@ async function makeCToken(opts = {}) {
       version = 1; // ccollateralcap's version is 1
       break;
 
-    case 'cslp':
-      underlying = opts.underlying || await makeToken(opts.underlyingOpts);
-      const sushiToken = await deploy('SushiToken');
-      const masterChef = await deploy('MasterChef', [sushiToken._address]);
-      await send(masterChef, 'add', [1, underlying._address]);
-      const sushiBar = await deploy('SushiBar', [sushiToken._address]);
-
-      cDelegatee = await deploy('CSLPDelegateHarness');
-      cDelegator = await deploy('CErc20Delegator',
-        [
-          underlying._address,
-          comptroller._address,
-          interestRateModel._address,
-          exchangeRate,
-          name,
-          symbol,
-          decimals,
-          admin,
-          cDelegatee._address,
-          encodeParameters(['address', 'address', 'uint'], [masterChef._address, sushiBar._address, 0]) // pid = 0
-        ]
-      );
-      cToken = await saddle.getContractAt('CSLPDelegateHarness', cDelegator._address); // XXXS at
-      break;
-
-    case 'cctoken':
-      underlying = opts.underlying || await makeToken({kind: "ctoken"});
-      cDelegatee = await deploy('CCTokenDelegateHarness');
-      cDelegator = await deploy('CErc20Delegator',
-        [
-          underlying._address,
-          comptroller._address,
-          interestRateModel._address,
-          exchangeRate,
-          name,
-          symbol,
-          decimals,
-          admin,
-          cDelegatee._address,
-          "0x0"
-        ]
-      );
-      cToken = await saddle.getContractAt('CCTokenDelegateHarness', cDelegator._address); // XXXS at
-      break;
-
     case 'cwrapped':
       underlying = await makeToken({kind: "wrapped"});
       cDelegatee = await deploy('CWrappedNativeDelegateHarness');
@@ -293,7 +228,6 @@ async function makeCToken(opts = {}) {
 
 async function makeInterestRateModel(opts = {}) {
   const {
-    root = saddle.account,
     kind = 'harnessed'
   } = opts || {};
 
@@ -313,7 +247,7 @@ async function makeInterestRateModel(opts = {}) {
     const jump = etherMantissa(dfn(opts.jump, 0));
     const kink = etherMantissa(dfn(opts.kink, 1));
     const roof = etherMantissa(dfn(opts.roof, 1));
-    return await deploy('JumpRateModelV2', [baseRate, multiplier, jump, kink, roof, root]);
+    return await deploy('JumpRateModelV2', [baseRate, multiplier, jump, kink, roof]);
   }
 
   if (kind == 'triple-slope') {
@@ -323,7 +257,7 @@ async function makeInterestRateModel(opts = {}) {
     const kink1 = etherMantissa(dfn(opts.kink1, 1));
     const kink2 = etherMantissa(dfn(opts.kink2, 1));
     const roof = etherMantissa(dfn(opts.roof, 1));
-    return await deploy('TripleSlopeRateModel', [baseRate, multiplier, jump, kink1, kink2, roof, root]);
+    return await deploy('TripleSlopeRateModel', [baseRate, multiplier, jump, kink1, kink2, roof]);
   }
 }
 
@@ -363,16 +297,6 @@ async function makeToken(opts = {}) {
     const symbol = opts.symbol || 'OMG';
     const name = opts.name || `Erc20 ${symbol}`;
     return await deploy('ERC20Harness', [quantity, name, decimals, symbol]);
-  } else if (kind == 'ctoken') {
-    const quantity = etherUnsigned(dfn(opts.quantity, 1e25));
-    const decimals = etherUnsigned(dfn(opts.decimals, 18));
-    const symbol = opts.symbol || 'cOMG';
-    const name = opts.name || `Compound ${symbol}`;
-
-    const comptroller = await makeComptroller({kind: "compound"});
-    const cToken = await deploy('CTokenHarness', [quantity, name, decimals, symbol, comptroller._address]);
-    await send(comptroller, '_supportMarket', [cToken._address, 0]);
-    return cToken;
   } else if (kind == 'curveToken') {
     const quantity = etherUnsigned(dfn(opts.quantity, 1e25));
     const decimals = etherUnsigned(dfn(opts.decimals, 18));
@@ -449,14 +373,6 @@ async function makeEvilAccount2(opts = {}) {
   const borrower = opts.borrower;
   const repayAmount = opts.repayAmount || etherMantissa(1);
   return await deploy('EvilAccount2', [crWeth._address, crEvil._address, borrower, repayAmount]);
-}
-
-async function preCSLP(underlying) {
-  const sushiToken = await deploy('SushiToken');
-  const masterChef = await deploy('MasterChef', [sushiToken._address]);
-  await send(masterChef, 'add', [1, underlying]);
-  const sushiBar = await deploy('SushiBar', [sushiToken._address]);
-  return encodeParameters(['address', 'address', 'uint'], [masterChef._address, sushiBar._address, 0]); // pid = 0
 }
 
 async function makeFlashloanReceiver(opts = {}) {
@@ -685,7 +601,6 @@ module.exports = {
   setEtherBalance,
   getBalances,
   adjustBalances,
-  preCSLP,
 
   preApprove,
   quickMint,

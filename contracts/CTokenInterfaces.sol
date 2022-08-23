@@ -363,7 +363,7 @@ contract CWrappedNativeInterface is CErc20Interface {
     /*** Market Events ***/
 
     /**
-     * @notice Event emitted when a flashloan occured
+     * @notice Event emitted when a flashloan occurred
      */
     event Flashloan(address indexed receiver, uint256 amount, uint256 totalFee, uint256 reservesFee);
 
@@ -409,7 +409,7 @@ contract CCapableErc20Interface is CErc20Interface, CSupplyCapStorage {
     /*** Market Events ***/
 
     /**
-     * @notice Event emitted when a flashloan occured
+     * @notice Event emitted when a flashloan occurred
      */
     event Flashloan(address indexed receiver, uint256 amount, uint256 totalFee, uint256 reservesFee);
 
