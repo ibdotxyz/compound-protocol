@@ -224,7 +224,7 @@ describe('Comptroller', () => {
       const cToken = await makeCToken();
       const result1 = await send(cToken.comptroller, '_supportMarket', [cToken._address, version]);
       expect(result1).toHaveLog('MarketListed', {cToken: cToken._address});
-      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed or delisted');
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed or soft delisted');
     });
 
     it("cannot list a soft delisted market", async () => {
@@ -235,7 +235,7 @@ describe('Comptroller', () => {
       await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
       await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
       await send(cToken.comptroller, '_delistMarket', [cToken._address, false]);
-      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed or delisted');
+      await expect(send(cToken.comptroller, '_supportMarket', [cToken._address, version])).rejects.toRevert('revert market already listed or soft delisted');
     });
 
     it("can list two different markets", async () => {
@@ -356,6 +356,13 @@ describe('Comptroller', () => {
       await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
       const result = await send(cToken.comptroller, '_delistMarket', [cToken._address, false]);
       expect(result).toHaveLog('MarketDelisted', {cToken: cToken._address, force: false});
+
+      const isListed = await call(cToken.comptroller, 'isMarketListed', [cToken._address]);
+      expect(isListed).toBeFalsy();
+      const isSoftDelisted = await call(cToken.comptroller, 'isMarketSoftDelisted', [cToken._address]);
+      expect(isSoftDelisted).toBeTruthy();
+      const softDelistedMarkets = await call(cToken.comptroller, 'getAllSoftDelistedMarkets');
+      expect(softDelistedMarkets).toEqual([cToken._address]);
     });
 
     it("succeeds and hard delists market", async () => {
@@ -366,6 +373,13 @@ describe('Comptroller', () => {
       await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
       const result = await send(cToken.comptroller, '_delistMarket', [cToken._address, true]);
       expect(result).toHaveLog('MarketDelisted', {cToken: cToken._address, force: true});
+
+      const isListed = await call(cToken.comptroller, 'isMarketListed', [cToken._address]);
+      expect(isListed).toBeFalsy();
+      const isSoftDelisted = await call(cToken.comptroller, 'isMarketSoftDelisted', [cToken._address]);
+      expect(isSoftDelisted).toBeFalsy();
+      const softDelistedMarkets = await call(cToken.comptroller, 'getAllSoftDelistedMarkets');
+      expect(softDelistedMarkets).toEqual([]);
     });
 
     it("succeeds and soft delists and then hard delists market", async () => {
@@ -374,8 +388,17 @@ describe('Comptroller', () => {
       await send(cToken.comptroller, '_setMintPaused', [cToken._address, true]);
       await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
       await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
-      await send(cToken.comptroller, '_delistMarket', [cToken._address, false]);
-      await send(cToken.comptroller, '_delistMarket', [cToken._address, true]);
+      const result1 = await send(cToken.comptroller, '_delistMarket', [cToken._address, false]);
+      expect(result1).toHaveLog('MarketDelisted', {cToken: cToken._address, force: false});
+      const result2 = await send(cToken.comptroller, '_delistMarket', [cToken._address, true]);
+      expect(result2).toHaveLog('MarketDelisted', {cToken: cToken._address, force: true});
+
+      const isListed = await call(cToken.comptroller, 'isMarketListed', [cToken._address]);
+      expect(isListed).toBeFalsy();
+      const isSoftDelisted = await call(cToken.comptroller, 'isMarketSoftDelisted', [cToken._address]);
+      expect(isSoftDelisted).toBeFalsy();
+      const softDelistedMarkets = await call(cToken.comptroller, 'getAllSoftDelistedMarkets');
+      expect(softDelistedMarkets).toEqual([]);
     });
 
     it("can delist two different markets", async () => {
@@ -393,6 +416,41 @@ describe('Comptroller', () => {
       const result2 = await send(cToken2.comptroller, '_delistMarket', [cToken2._address, true]);
       expect(result1).toHaveLog('MarketDelisted', {cToken: cToken1._address, force: false});
       expect(result2).toHaveLog('MarketDelisted', {cToken: cToken2._address, force: true});
+
+      const isListed1 = await call(cToken1.comptroller, 'isMarketListed', [cToken1._address]);
+      expect(isListed1).toBeFalsy();
+      const isSoftDelisted1 = await call(cToken1.comptroller, 'isMarketSoftDelisted', [cToken1._address]);
+      expect(isSoftDelisted1).toBeTruthy();
+      const isListed2 = await call(cToken2.comptroller, 'isMarketListed', [cToken2._address]);
+      expect(isListed2).toBeFalsy();
+      const isSoftDelisted2 = await call(cToken2.comptroller, 'isMarketSoftDelisted', [cToken2._address]);
+      expect(isSoftDelisted2).toBeFalsy();
+      const softDelistedMarkets = await call(cToken1.comptroller, 'getAllSoftDelistedMarkets');
+      expect(softDelistedMarkets).toEqual([cToken1._address]);
+    });
+
+    it("cannot soft delist a market twice", async () => {
+      const cToken = await makeCToken();
+      expect(await send(cToken.comptroller, '_supportMarket', [cToken._address, version])).toSucceed();
+      await send(cToken.comptroller, '_setMintPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
+      const result = await send(cToken.comptroller, '_delistMarket', [cToken._address, false]);
+      expect(result).toHaveLog('MarketDelisted', {cToken: cToken._address, force: false});
+
+      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address, false])).rejects.toRevert('revert market not listed');
+    });
+
+    it("cannot hard delist a market twice", async () => {
+      const cToken = await makeCToken();
+      expect(await send(cToken.comptroller, '_supportMarket', [cToken._address, version])).toSucceed();
+      await send(cToken.comptroller, '_setMintPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
+      const result = await send(cToken.comptroller, '_delistMarket', [cToken._address, true]);
+      expect(result).toHaveLog('MarketDelisted', {cToken: cToken._address, force: true});
+
+      await expect(send(cToken.comptroller, '_delistMarket', [cToken._address, true])).rejects.toRevert('revert market not listed or soft delisted');
     });
   });
 
