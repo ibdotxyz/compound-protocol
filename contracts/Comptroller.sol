@@ -218,12 +218,12 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
-     * @notice Return a specific market is listed or delisted
+     * @notice Return a specific market is listed or soft delisted
      * @param cTokenAddress The address of the asset to be checked
-     * @return Whether or not the market is listed or delisted
+     * @return Whether or not the market is listed or soft delisted
      */
-    function isMarketListedOrDelisted(address cTokenAddress) public view returns (bool) {
-        return markets[cTokenAddress].isListed || isMarketDelisted[cTokenAddress];
+    function isMarketListedOrSoftDelisted(address cTokenAddress) public view returns (bool) {
+        return markets[cTokenAddress].isListed || isMarketSoftDelisted[cTokenAddress];
     }
 
     /*** Policy Hooks ***/
@@ -325,7 +325,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
-        require(isMarketListedOrDelisted(cToken), "market not listed");
+        require(isMarketListedOrSoftDelisted(cToken), "market not listed");
         require(!isCreditAccount(redeemer, cToken), "credit account cannot redeem");
 
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
@@ -471,7 +471,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         // Shh - currently unused
         repayAmount;
 
-        require(isMarketListedOrDelisted(cToken), "market not listed");
+        require(isMarketListedOrSoftDelisted(cToken), "market not listed");
 
         if (isCreditAccount(borrower, cToken)) {
             require(borrower == payer, "cannot repay on behalf of credit account");
@@ -534,7 +534,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         liquidator;
 
         require(
-            isMarketListedOrDelisted(cTokenBorrowed) && isMarketListedOrDelisted(cTokenCollateral),
+            isMarketListedOrSoftDelisted(cTokenBorrowed) && isMarketListedOrSoftDelisted(cTokenCollateral),
             "market not listed"
         );
 
@@ -606,7 +606,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         seizeTokens;
 
         require(
-            isMarketListedOrDelisted(cTokenBorrowed) && isMarketListedOrDelisted(cTokenCollateral),
+            isMarketListedOrSoftDelisted(cTokenBorrowed) && isMarketListedOrSoftDelisted(cTokenCollateral),
             "market not listed"
         );
         require(
@@ -889,7 +889,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
             CToken asset = assets[i];
 
             // Skip the asset if it is not listed or soft delisted.
-            if (!isMarketListedOrDelisted(address(asset))) {
+            if (!isMarketListedOrSoftDelisted(address(asset))) {
                 continue;
             }
 
@@ -1109,7 +1109,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      */
     function _supportMarket(CToken cToken, Version version) external returns (uint256) {
         require(msg.sender == admin, "admin only");
-        require(!isMarketListedOrDelisted(address(cToken)), "market already listed or delisted");
+        require(!isMarketListedOrSoftDelisted(address(cToken)), "market already listed or soft delisted");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
@@ -1125,7 +1125,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /**
      * @notice Remove the market from the markets mapping
      * @param cToken The address of the market (token) to delist
-     * @param force If True, hard delist the market by not adding to `isMarketDelisted`
+     * @param force If True, hard delist the market by not adding to `isMarketSoftDelisted`
      */
     function _delistMarket(CToken cToken, bool force) external {
         require(msg.sender == admin, "admin only");
@@ -1140,19 +1140,40 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         if (!force) {
             // Soft delist.
             require(isMarketListed(address(cToken)), "market not listed");
-            isMarketDelisted[address(cToken)] = true;
+
+            // Add the market to soft delisted markets.
+            isMarketSoftDelisted[address(cToken)] = true;
+            softDelistedMarkets.push(address(cToken));
         } else {
             // Hard delist.
-            require(isMarketListedOrDelisted(address(cToken)), "market not listed or soft delisted");
-        }
-        delete markets[address(cToken)];
+            require(isMarketListedOrSoftDelisted(address(cToken)), "market not listed or soft delisted");
 
-        for (uint256 i = 0; i < allMarkets.length; i++) {
-            if (allMarkets[i] == cToken) {
-                allMarkets[i] = allMarkets[allMarkets.length - 1];
-                delete allMarkets[allMarkets.length - 1];
-                allMarkets.length--;
-                break;
+            if (isMarketSoftDelisted[address(cToken)]) {
+                // Remove the market from soft delisted markets.
+                isMarketSoftDelisted[address(cToken)] = false;
+
+                for (uint256 i = 0; i < softDelistedMarkets.length; i++) {
+                    if (softDelistedMarkets[i] == address(cToken)) {
+                        softDelistedMarkets[i] = softDelistedMarkets[softDelistedMarkets.length - 1];
+                        delete softDelistedMarkets[softDelistedMarkets.length - 1];
+                        softDelistedMarkets.length--;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (isMarketListed(address(cToken))) {
+            // Remove the market from markets.
+            delete markets[address(cToken)];
+
+            for (uint256 i = 0; i < allMarkets.length; i++) {
+                if (allMarkets[i] == cToken) {
+                    allMarkets[i] = allMarkets[allMarkets.length - 1];
+                    delete allMarkets[allMarkets.length - 1];
+                    allMarkets.length--;
+                    break;
+                }
             }
         }
 
@@ -1367,6 +1388,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      */
     function getAllMarkets() public view returns (CToken[] memory) {
         return allMarkets;
+    }
+
+    /**
+     * @notice Return all of the soft delisted markets
+     * @dev The automatic getter may be used to access an individual market.
+     * @return The list of market addresses
+     */
+    function getAllSoftDelistedMarkets() public view returns (address[] memory) {
+        return softDelistedMarkets;
     }
 
     function getBlockNumber() public view returns (uint256) {
