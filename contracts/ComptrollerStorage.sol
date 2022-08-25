@@ -110,9 +110,12 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     /// @notice liquidityMining the liquidity mining module that handles the LM rewards distribution.
     address public liquidityMining;
 
-    /// @notice isMarketDelisted records the market which has been delisted by us.
-    mapping(address => bool) public isMarketDelisted;
+    /// @notice isMarketSoftDelisted records the market which has been soft delisted by us.
+    mapping(address => bool) public isMarketSoftDelisted;
 
     /// @notice creditLimitManager is the role who is in charge of increasing the credit limit.
     address public creditLimitManager;
+
+    /// @notice A list of all soft delisted markets
+    address[] public softDelistedMarkets;
 }
