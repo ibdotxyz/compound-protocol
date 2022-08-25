@@ -1291,6 +1291,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     function _become(Unitroller unitroller) public {
         require(msg.sender == unitroller.admin(), "unitroller admin only");
         require(unitroller._acceptImplementation() == 0, "unauthorized");
+
+        Comptroller(address(unitroller))._becomeExtension();
+    }
+
+    function _becomeExtension() public {
+        require(msg.sender == comptrollerImplementation, "!implementation");
+
+        isMarketSoftDelisted[0xb1f656B82507cd07daBD71f966294E2262B465AD] = false; // iUST (Wormhole)
+        isMarketSoftDelisted[0x9be7B5b7e219461F164863daD045a35D1101aa64] = false; // iUST (Axelar)
     }
 
     /**
