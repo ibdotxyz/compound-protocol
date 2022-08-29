@@ -301,9 +301,24 @@ describe('Comptroller', () => {
       await expect(send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[1]})).rejects.toRevert("revert guardian only");
     });
 
-    it("fails for invalid market", async () => {
-      const cToken = await makeCToken();
+    it("fails if not a credit account", async () => {
+      const cToken = await makeCToken({supportMarket: true});
       await send(cToken.comptroller, '_setGuardian', [accounts[0]]);
+
+      await expect(send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[0]})).rejects.toRevert("revert cannot pause non-credit account");
+    });
+
+    it("fails for market not listed", async () => {
+      const cToken = await makeCToken({supportMarket: true});
+      await send(cToken.comptroller, '_setGuardian', [accounts[0]]);
+
+      await send(cToken.comptroller, '_setCreditLimit', [accounts[0], cToken._address, creditLimit]);
+
+      // delist market on purpose
+      await send(cToken.comptroller, '_setMintPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setBorrowPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_setFlashloanPaused', [cToken._address, true]);
+      await send(cToken.comptroller, '_delistMarket', [cToken._address, true]);
 
       await expect(send(cToken.comptroller, '_pauseCreditLimit', [accounts[0], cToken._address], {from: accounts[0]})).rejects.toRevert("revert market not listed");
     });
