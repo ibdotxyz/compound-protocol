@@ -1364,6 +1364,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      */
     function _pauseCreditLimit(address protocol, address market) public {
         require(msg.sender == guardian, "guardian only");
+        require(isCreditAccount(protocol, market), "cannot pause non-credit account");
 
         // We set the credit limit to a very small amount (1 Wei) to avoid the protocol becoming a normal account.
         // Normal account could be liquidated or repaid, which might cause some additional problem.
