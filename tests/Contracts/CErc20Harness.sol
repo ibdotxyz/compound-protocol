@@ -1276,6 +1276,10 @@ contract CWrappedNativeDelegateHarness is CWrappedNativeDelegate {
         return doTransferOut(to, amount, true);
     }
 
+    function harnessSetInternalCash(uint256 amount) public returns (uint256) {
+        internalCash = amount;
+    }
+
     function() external payable {}
 }
 

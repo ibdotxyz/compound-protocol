@@ -45,6 +45,7 @@ async function preRedeem(cToken, redeemer, redeemTokens, redeemAmount, exchangeR
   await send(cToken, 'harnessSetExchangeRate', [etherMantissa(exchangeRate)]);
   await send(cToken.underlying, 'deposit', [], { from: root, value: redeemAmount });
   await send(cToken.underlying, 'harnessSetBalance', [cToken._address, redeemAmount]);
+  await send(cToken, 'harnessSetInternalCash', [redeemAmount]);
   await send(cToken, 'harnessSetTotalSupply', [redeemTokens]);
   await setBalance(cToken, redeemer, redeemTokens);
 }
