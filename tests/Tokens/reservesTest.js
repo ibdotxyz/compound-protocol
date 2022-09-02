@@ -181,18 +181,35 @@ describe('CToken', function () {
   });
 
   describe('gulp', () => {
-    let cToken;
-    beforeEach(async () => {
+    it('absorbs excess cash into reserves (ccapable)', async () => {
       cToken = await makeCToken({kind: 'ccapable'});
-    });
-
-    it('absorbs excess cash into reserves', async () => {
       expect(
         await send(cToken.underlying, 'transfer', [cToken._address, cash])
       ).toSucceed();
       expect(await send(cToken, 'gulp')).toSucceed();
       expect(await call(cToken, 'getCash')).toEqualNumber(cash);
       expect(await call(cToken, 'totalReserves')).toEqualNumber(cash);
-    })
+    });
+
+    it('absorbs excess cash into reserves (ccollateralcap)', async () => {
+      cToken = await makeCToken({kind: 'ccollateralcap'});
+      expect(
+        await send(cToken.underlying, 'transfer', [cToken._address, cash])
+      ).toSucceed();
+      expect(await send(cToken, 'gulp')).toSucceed();
+      expect(await call(cToken, 'getCash')).toEqualNumber(cash);
+      expect(await call(cToken, 'totalReserves')).toEqualNumber(cash);
+    });
+
+    it('absorbs excess cash into reserves (cwrapped)', async () => {
+      cToken = await makeCToken({kind: 'cwrapped'});
+      await send(cToken.underlying, 'harnessSetBalance', [root, cash]);
+      expect(
+        await send(cToken.underlying, 'transfer', [cToken._address, cash])
+      ).toSucceed();
+      expect(await send(cToken, 'gulp')).toSucceed();
+      expect(await call(cToken, 'getCash')).toEqualNumber(cash);
+      expect(await call(cToken, 'totalReserves')).toEqualNumber(cash);
+    });
   })
 });
