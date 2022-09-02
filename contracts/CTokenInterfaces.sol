@@ -354,7 +354,7 @@ contract CErc20Interface is CErc20Storage {
     function _addReserves(uint256 addAmount) external returns (uint256);
 }
 
-contract CWrappedNativeInterface is CErc20Interface {
+contract CCapableErc20Interface is CErc20Interface, CSupplyCapStorage {
     /**
      * @notice Flash loan fee ratio
      */
@@ -367,6 +367,12 @@ contract CWrappedNativeInterface is CErc20Interface {
      */
     event Flashloan(address indexed receiver, uint256 amount, uint256 totalFee, uint256 reservesFee);
 
+    /*** User Interface ***/
+
+    function gulp() external;
+}
+
+contract CWrappedNativeInterface is CCapableErc20Interface {
     /*** User Interface ***/
 
     function mintNative() external payable returns (uint256);
@@ -398,24 +404,6 @@ contract CWrappedNativeInterface is CErc20Interface {
     function collateralCap() external view returns (uint256);
 
     function totalCollateralTokens() external view returns (uint256);
-}
-
-contract CCapableErc20Interface is CErc20Interface, CSupplyCapStorage {
-    /**
-     * @notice Flash loan fee ratio
-     */
-    uint256 public constant flashFeeBips = 3;
-
-    /*** Market Events ***/
-
-    /**
-     * @notice Event emitted when a flashloan occurred
-     */
-    event Flashloan(address indexed receiver, uint256 amount, uint256 totalFee, uint256 reservesFee);
-
-    /*** User Interface ***/
-
-    function gulp() external;
 }
 
 contract CCollateralCapErc20Interface is CCapableErc20Interface, CCollateralCapStorage {
