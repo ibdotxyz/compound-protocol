@@ -31,6 +31,7 @@ async function preBorrow(cToken, borrower, borrowAmount) {
   await send(cToken, 'harnessSetTotalBorrows', [0]);
   await send(cToken.underlying, 'deposit', [], { from: root, value: borrowAmount });
   await send(cToken.underlying, 'harnessSetBalance', [cToken._address, borrowAmount]);
+  await send(cToken, 'harnessSetInternalCash', [borrowAmount]);
 }
 
 async function borrowFresh(cToken, borrower, borrowAmount) {

@@ -21,11 +21,6 @@ contract CWrappedNativeDelegate is CWrappedNative {
         // Shh -- currently unused
         data;
 
-        // Shh -- we don't ever want this hook to be marked pure
-        if (false) {
-            implementation = address(0);
-        }
-
         require(msg.sender == admin, "admin only");
 
         // Set CToken version in comptroller and convert native token to wrapped token.
@@ -37,6 +32,9 @@ contract CWrappedNativeDelegate is CWrappedNative {
         if (balance > 0) {
             WrappedNativeInterface(underlying).deposit.value(balance)();
         }
+
+        // Set internal cash when becoming implementation
+        internalCash = getCashOnChain();
     }
 
     /**

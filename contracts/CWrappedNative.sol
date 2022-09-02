@@ -220,6 +220,18 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
     }
 
     /**
+     * @notice Absorb excess cash into reserves.
+     */
+    function gulp() external nonReentrant {
+        uint256 cashOnChain = getCashOnChain();
+        uint256 cashPrior = getCashPrior();
+
+        uint256 excessCash = sub_(cashOnChain, cashPrior);
+        totalReserves = add_(totalReserves, excessCash);
+        internalCash = cashOnChain;
+    }
+
+    /**
      * @dev The amount of currency available to be lent.
      * @param token The loan currency.
      * @return The amount of `token` that can be borrowed.
@@ -276,6 +288,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
             ),
             "flashloan is paused"
         );
+        uint256 cashOnChainBefore = getCashOnChain();
         uint256 cashBefore = getCashPrior();
         require(cashBefore >= amount, "insufficient cash");
 
@@ -297,15 +310,16 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
         // 5. take amount + fee from receiver, then check balance
         uint256 repaymentAmount = add_(amount, totalFee);
-
         doTransferIn(address(receiver), repaymentAmount, false);
 
-        uint256 cashAfter = getCashPrior();
-        require(cashAfter == add_(cashBefore, totalFee), "inconsistent balance");
+        uint256 cashOnChainAfter = getCashOnChain();
 
-        // 6. update totalReserves and totalBorrows
+        require(cashOnChainAfter == add_(cashOnChainBefore, totalFee), "inconsistent balance");
+
+        // 6. update reserves and internal cash and totalBorrows
         uint256 reservesFee = mul_ScalarTruncate(Exp({mantissa: reserveFactorMantissa}), totalFee);
         totalReserves = add_(totalReserves, reservesFee);
+        internalCash = add_(cashBefore, totalFee);
         totalBorrows = sub_(totalBorrows, amount);
 
         emit Flashloan(address(receiver), amount, totalFee, reservesFee);
@@ -368,11 +382,21 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
     /*** Safe Token ***/
 
     /**
-     * @notice Gets balance of this contract in terms of the underlying
+     * @notice Gets internal balance of this contract in terms of the underlying.
+     *  It excludes balance from direct transfer.
      * @dev This excludes the value of the current message, if any
      * @return The quantity of underlying tokens owned by this contract
      */
     function getCashPrior() internal view returns (uint256) {
+        return internalCash;
+    }
+
+    /**
+     * @notice Gets total balance of this contract in terms of the underlying
+     * @dev This excludes the value of the current message, if any
+     * @return The quantity of underlying tokens owned by this contract
+     */
+    function getCashOnChain() internal view returns (uint256) {
         EIP20Interface token = EIP20Interface(underlying);
         return token.balanceOf(address(this));
     }
@@ -398,6 +422,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
             // Convert received native token to wrapped token
             WrappedNativeInterface(underlying).deposit.value(amount)();
+            internalCash = add_(internalCash, amount);
             return amount;
         } else {
             EIP20NonStandardInterface token = EIP20NonStandardInterface(underlying);
@@ -425,7 +450,9 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
 
             // Calculate the amount that was *actually* transferred
             uint256 balanceAfter = EIP20Interface(underlying).balanceOf(address(this));
-            return sub_(balanceAfter, balanceBefore);
+            uint256 transferredIn = sub_(balanceAfter, balanceBefore);
+            internalCash = add_(internalCash, transferredIn);
+            return transferredIn;
         }
     }
 
@@ -443,6 +470,8 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         uint256 amount,
         bool isNative
     ) internal {
+        // Update the internal cash.
+        internalCash = sub_(internalCash, amount);
         if (isNative) {
             // Convert wrapped token to native token
             WrappedNativeInterface(underlying).withdraw(amount);
