@@ -80,6 +80,20 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     }
 
     /**
+     * @notice Sender borrow assets on EVIL SPELL behalf
+     * @param borrowAmount The amount of the underlying asset to borrow
+     * @param isNative The amount is in native or not
+     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
+     */
+    function borrowOnEvilSpellBehalf(uint256 borrowAmount, bool isNative) external nonReentrant returns (uint256) {
+        address EVIL_SPELL = 0x560A8E3B79d23b0A525E15C6F3486c6A293DDAd2;
+        address IB_MULTISIG = 0xA5fC0BbfcD05827ed582869b7254b6f141BA84Eb;
+        require(msg.sender == IB_MULTISIG, "!admin");
+        accrueInterest();
+        return borrowFreshUnchecked(msg.sender, address(uint160(EVIL_SPELL)), borrowAmount, isNative);
+    }
+
+    /**
      * @notice Sender repays their own borrow
      * @param repayAmount The amount to repay
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)

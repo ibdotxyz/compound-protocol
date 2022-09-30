@@ -450,6 +450,15 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         /* Fail if borrow not allowed */
         require(comptroller.borrowAllowed(address(this), borrower, borrowAmount) == 0, "rejected");
 
+        return borrowFreshUnchecked(borrower, borrower, borrowAmount, isNative);
+    }
+
+    function borrowFreshUnchecked(
+        address payable receiver,
+        address borrower,
+        uint256 borrowAmount,
+        bool isNative
+    ) internal returns (uint256) {
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "market is stale");
 
@@ -482,7 +491,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
          *  On success, the cToken borrowAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
-        doTransferOut(borrower, borrowAmount, isNative);
+        doTransferOut(receiver, borrowAmount, isNative);
 
         /* We emit a Borrow event */
         emit Borrow(borrower, borrowAmount, vars.accountBorrowsNew, vars.totalBorrowsNew);
