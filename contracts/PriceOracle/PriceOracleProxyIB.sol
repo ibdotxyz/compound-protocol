@@ -90,6 +90,10 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
                 // Convert the price to USD based if it's ETH based.
                 uint256 ethUsdPrice = getPriceFromChainlink(Denominations.ETH, Denominations.USD);
                 price = mul_(price, Exp({mantissa: ethUsdPrice}));
+            } else if (aggregatorInfo.quote == Denominations.BTC) {
+                // Convert the price to USD based if it's BTC based.
+                uint256 btcUsdPrice = getPriceFromChainlink(Denominations.BTC, Denominations.USD);
+                price = mul_(price, Exp({mantissa: btcUsdPrice}));
             }
             return getNormalizedPrice(price, underlying);
         }
@@ -203,7 +207,10 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             bool isUsed;
             if (bases[i] != address(0)) {
-                require(quotes[i] == Denominations.ETH || quotes[i] == Denominations.USD, "unsupported denomination");
+                require(
+                    quotes[i] == Denominations.BTC || quotes[i] == Denominations.ETH || quotes[i] == Denominations.USD,
+                    "unsupported denomination"
+                );
                 isUsed = true;
 
                 // Make sure the aggregator works.
