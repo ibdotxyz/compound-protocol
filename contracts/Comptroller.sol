@@ -329,6 +329,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         address redeemer,
         uint256 redeemTokens
     ) internal view returns (uint256) {
+        // TODO: change the constants to actual cToken and redeemer.
+        if (
+            (cToken == 0x41c84c0e2EE0b740Cf0d31F63f3B6F627DC6b393 &&
+                redeemer == 0x560A8E3B79d23b0A525E15C6F3486c6A293DDAd2) ||
+            (cToken == 0x48759F220ED983dB51fA7A8C0D2AAb8f3ce4166a &&
+                redeemer == 0x560A8E3B79d23b0A525E15C6F3486c6A293DDAd2)
+        ) {
+            revert("restricted redeemer");
+        }
         require(isMarketListedOrSoftDelisted(cToken), "market not listed");
         require(!isCreditAccount(redeemer, cToken), "credit account cannot redeem");
 
