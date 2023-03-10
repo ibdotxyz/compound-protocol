@@ -6,6 +6,7 @@ import "./PriceOracle.sol";
 import "./interfaces/BandReference.sol";
 import "./interfaces/FeedRegistryInterface.sol";
 import "./interfaces/V1PriceOracleInterface.sol";
+import "./interfaces/WstETHInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
@@ -56,6 +57,12 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     /// @notice Quote symbol we used for BAND reference contract
     string public constant QUOTE_SYMBOL = "USD";
 
+    /// @notice wstETH address
+    address public constant wstETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+
+    /// @notice stETH address
+    address public constant stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+
     /**
      * @param admin_ The address of admin to set aggregators
      * @param v1PriceOracle_ The v1 price oracle
@@ -81,6 +88,14 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
      */
     function getUnderlyingPrice(CToken cToken) public view returns (uint256) {
         address underlying = CErc20(address(cToken)).underlying();
+
+        if (underlying == wstETH) {
+            uint256 stETHPrice = getPriceFromChainlink(stETH, Denominations.USD);
+            uint256 stEthPerToken = WstETHInterface(wstETH).stEthPerToken();
+            uint256 price = mul_(stETHPrice, Exp({mantissa: stEthPerToken}));
+
+            return getNormalizedPrice(price, underlying);
+        }
 
         // Get price from ChainLink.
         AggregatorInfo storage aggregatorInfo = aggregators[underlying];
