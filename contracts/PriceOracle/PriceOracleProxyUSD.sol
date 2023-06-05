@@ -9,6 +9,8 @@ import "../Exponential.sol";
 import "../EIP20Interface.sol";
 
 contract PriceOracleProxyUSD is PriceOracle, Exponential {
+    uint256 private constant GRACE_PERIOD_TIME = 3600;
+
     /// @notice ChainLink aggregator base, currently support USD and ETH
     enum AggregatorBase {
         USD,
@@ -37,18 +39,22 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential {
     /// @notice The ETH-USD aggregator address
     AggregatorV3Interface public ethUsdAggregator;
 
+    /// @notice The sequencer uptime feed address
+    AggregatorV3Interface public sequencerUptimeFeed;
+
     /**
      * @param admin_ The address of admin to set aggregators
      * @param v1PriceOracle_ The v1 price oracle
+     * @param ethUsdAggregator_ The ETH-USD aggregator address
+     * @param sequencerUptimeFeed_ The sequencer uptime feed address
      */
-    constructor(
-        address admin_,
-        address v1PriceOracle_,
-        address ethUsdAggregator_
-    ) public {
+    constructor(address admin_, address v1PriceOracle_, address ethUsdAggregator_, address sequencerUptimeFeed_)
+        public
+    {
         admin = admin_;
         v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
         ethUsdAggregator = AggregatorV3Interface(ethUsdAggregator_);
+        sequencerUptimeFeed = AggregatorV3Interface(sequencerUptimeFeed_);
     }
 
     /**
@@ -67,13 +73,15 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential {
                 price = mul_(price, Exp({mantissa: getPriceFromChainlink(ethUsdAggregator)}));
             }
             uint256 underlyingDecimals = EIP20Interface(CErc20(cTokenAddress).underlying()).decimals();
-            return mul_(price, 10**(18 - underlyingDecimals));
+            return mul_(price, 10 ** (18 - underlyingDecimals));
         }
 
         return getPriceFromV1(cTokenAddress);
     }
 
-    /*** Internal fucntions ***/
+    /**
+     * Internal fucntions
+     */
 
     /**
      * @notice Get price from ChainLink
@@ -81,11 +89,23 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential {
      * @return The price
      */
     function getPriceFromChainlink(AggregatorV3Interface aggregator) internal view returns (uint256) {
-        (, int256 price, , , ) = aggregator.latestRoundData();
+        (, int256 answer, uint256 startedAt,,) = sequencerUptimeFeed.latestRoundData();
+
+        // Answer == 0: Sequencer is up
+        // Answer == 1: Sequencer is down
+        bool isSequencerUp = answer == 0;
+        require(isSequencerUp, "sequencer down");
+
+        // Make sure the grace period has passed after the
+        // sequencer is back up.
+        uint256 timeSinceUp = sub_(block.timestamp, startedAt);
+        require(timeSinceUp > GRACE_PERIOD_TIME, "grace period not over");
+
+        (, int256 price,,,) = aggregator.latestRoundData();
         require(price > 0, "invalid price");
 
         // Extend the decimals to 1e18.
-        return mul_(uint256(price), 10**(18 - uint256(aggregator.decimals())));
+        return mul_(uint256(price), 10 ** (18 - uint256(aggregator.decimals())));
     }
 
     /**
@@ -98,7 +118,9 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential {
         return v1PriceOracle.assetPrices(underlying);
     }
 
-    /*** Admin or guardian functions ***/
+    /**
+     * Admin or guardian functions
+     */
 
     event AggregatorUpdated(address cTokenAddress, address source, AggregatorBase base);
     event SetGuardian(address guardian);
@@ -141,10 +163,8 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential {
             if (sources[i] != address(0)) {
                 require(msg.sender == admin, "guardian may only clear the aggregator");
             }
-            aggregators[cTokenAddresses[i]] = AggregatorInfo({
-                source: AggregatorV3Interface(sources[i]),
-                base: bases[i]
-            });
+            aggregators[cTokenAddresses[i]] =
+                AggregatorInfo({source: AggregatorV3Interface(sources[i]), base: bases[i]});
             emit AggregatorUpdated(cTokenAddresses[i], sources[i], bases[i]);
         }
     }
